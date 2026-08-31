@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #e7e1cf;
+  color: #1b1f1a;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* tabular figures everywhere mono is used */
+.font-mono,
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* hairline ruled divider */
+.rule {
+  border-bottom: 1px solid rgba(27, 31, 26, 0.14);
+}
+.rule-ink {
+  border-bottom: 1px solid rgba(237, 231, 214, 0.16);
+}
+
+/* visible keyboard focus states */
+:focus-visible {
+  outline: 2px solid #1f6f5c;
+  outline-offset: 2px;
+}
+
+/* restore focus ring on inputs that use outline-none */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #1f6f5c;
+  outline-offset: 0;
+  border-color: #1f6f5c;
+}
+
+/* ledger table rows */
+.ledger-row {
+  border-bottom: 1px solid rgba(27, 31, 26, 0.1);
+}
+
+/* the verification stamp — slightly rough inked edge via layered shadows */
+.stamp {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #1f6f5c;
+  border: 3px solid #1f6f5c;
+  border-radius: 14px;
+  padding: 0.35rem 0.85rem;
+  background: rgba(31, 111, 92, 0.04);
+  transform: rotate(-7deg);
+  text-align: center;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 92, 0.4),
+    0 0 0 2px rgba(231, 225, 207, 0.9);
+}
+.stamp::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(231, 225, 207, 0.5) 0 2px, transparent 2px),
+    radial-gradient(circle at 78% 82%, rgba(231, 225, 207, 0.6) 0 2px, transparent 2px),
+    radial-gradient(circle at 45% 62%, rgba(231, 225, 207, 0.4) 0 1px, transparent 1px),
+    radial-gradient(circle at 30% 88%, rgba(231, 225, 207, 0.5) 0 1.5px, transparent 1.5px);
+  mix-blend-mode: lighten;
+  pointer-events: none;
+}
+
+/* small list-view stamp badge */
+.stamp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 2px solid #1f6f5c;
+  border-radius: 8px;
+  color: #1f6f5c;
+  font-family: 'IBM Plex Slab', Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+  background: rgba(31, 111, 92, 0.06);
+}
+
+/* stamp landing animation */
+@keyframes stamp-down {
+  0% {
+    transform: rotate(-7deg) scale(2.4);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(-7deg) scale(1.08);
+    opacity: 1;
+  }
+  75% {
+    transform: rotate(-7deg) scale(0.95);
+  }
+  100% {
+    transform: rotate(-7deg) scale(1);
+  }
+}
+.stamp-land {
+  animation: stamp-down 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* subtle ink impression pulse when verifying */
+@keyframes ink-flash {
+  0% { box-shadow: 0 0 0 0 rgba(31, 111, 92, 0.45); }
+  100% { box-shadow: 0 0 0 24px rgba(31, 111, 92, 0); }
+}
+.ink-flash {
+  animation: ink-flash 0.6s ease-out;
+}
+
+/* fine cross-rule background for ledger paper feel (optional, used on hero surfaces) */
+.paper-grid {
+  background-image: linear-gradient(to right, rgba(27, 31, 26, 0.05) 1px, transparent 1px);
+  background-size: 1.25rem 100%;
+}
+
+/* custom thin scrollbar in scroll areas */
+.thin-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(27, 31, 26, 0.18);
+  border-radius: 0;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* selection */
+::selection {
+  background: rgba(31, 111, 92, 0.25);
+}
