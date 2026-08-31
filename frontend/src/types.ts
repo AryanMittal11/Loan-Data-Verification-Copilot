@@ -176,3 +176,26 @@ export interface LoanDetail {
   audit: AuditEvent[];
   verified: VerifiedRecord | null;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  organization?: string;
+  token?: string;
+}
+
+export interface AuthCredentials {
+  email: string;
+  password?: string;
+  role: Role;
+}
+
+export interface RegisterData {
+  name: string;
+  email: string;
+  password?: string;
+  role: Role;
+  organization?: string;
+}

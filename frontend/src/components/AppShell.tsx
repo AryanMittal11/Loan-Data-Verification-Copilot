@@ -49,13 +49,21 @@ const roleIcon: Record<Role, typeof Upload> = {
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { role, actor, signOut, switchRole } = useApp();
+  const { role, actor, user, signOut } = useApp();
   const loc = useLocation();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!role) return <>{children}</>;
   const items = navByRole[role];
+
+  const initials = actor
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'U';
 
   const SidebarContent = (
     <>
@@ -66,14 +74,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Loan Verify
           </span>
         </div>
-        <p className="mt-1 text-2xs text-paper/50 uppercase tracking-wider">
-          Verification Copilot
+        <p className="mt-1 text-2xs text-paper/50 uppercase tracking-wider font-mono">
+          {roleLabel[role]} Console
         </p>
       </div>
 
       <nav className="flex-1 py-3 overflow-y-auto thin-scroll">
         <p className="px-5 pt-2 pb-1 text-2xs uppercase tracking-wider text-paper/40">
-          {roleLabel[role]}
+          Navigation
         </p>
         {items.map((it) => {
           const active =
@@ -87,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={cn(
                 'flex items-center gap-3 px-5 py-2.5 text-sm border-l-2 transition-colors',
                 active
-                  ? 'border-verified-light text-paper bg-paper/5'
+                  ? 'border-verified-light text-paper bg-paper/10 font-medium'
                   : 'border-transparent text-paper/65 hover:text-paper hover:bg-paper/5',
               )}
             >
@@ -98,52 +106,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <div className="border-t border-paper/10">
-        <p className="px-5 pt-3 pb-1 text-2xs uppercase tracking-wider text-paper/40">
-          Switch role
-        </p>
-        <div className="px-3 pb-2 flex gap-1">
-          {(['operator', 'reviewer', 'consumer'] as Role[]).map((r) => {
-            const RIcon = roleIcon[r];
-            return (
-              <button
-                key={r}
-                onClick={() => {
-                  switchRole(r);
-                  nav(`/${r}`);
-                  setMobileOpen(false);
-                }}
-                className={cn(
-                  'flex-1 flex flex-col items-center gap-1 py-2 text-2xs uppercase tracking-wide transition-colors',
-                  r === role
-                    ? 'text-verified-light bg-paper/5'
-                    : 'text-paper/45 hover:text-paper hover:bg-paper/5',
-                )}
-              >
-                <RIcon className="w-4 h-4" strokeWidth={1.75} />
-                {roleLabel[r].split(' ')[0]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="px-5 py-4 border-t border-paper/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-paper/80">{actor}</p>
-            <p className="text-2xs text-paper/40 uppercase tracking-wider">
-              {roleLabel[role]}
-            </p>
+      {/* Authenticated User Profile & Sign Out (Strict RBAC isolation) */}
+      <div className="p-4 border-t border-paper/10 bg-paper/5">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-none border border-paper/20 bg-paper/10 text-paper flex items-center justify-center font-mono text-xs font-semibold shrink-0">
+            {initials}
           </div>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-1.5 text-2xs text-paper/50 hover:text-paper border border-paper/15 hover:border-paper/30 px-2 py-1 transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" strokeWidth={1.75} />
-            Sign out
-          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-paper truncate">{actor}</p>
+            <p className="text-3xs text-paper/50 font-mono truncate">{user?.email || `${role}@intain.com`}</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-verified-light" />
+              <span className="text-3xs text-verified-light uppercase tracking-wider font-mono">
+                {roleLabel[role]}
+              </span>
+            </div>
+          </div>
         </div>
+
+        <button
+          onClick={() => {
+            signOut();
+            nav('/');
+          }}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 text-2xs text-paper/70 hover:text-paper border border-paper/20 hover:border-paper/40 py-1.5 transition-colors bg-paper/5"
+        >
+          <LogOut className="w-3.5 h-3.5" strokeWidth={1.75} />
+          <span>Sign Out / Switch Portal</span>
+        </button>
       </div>
     </>
   );

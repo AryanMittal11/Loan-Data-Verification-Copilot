@@ -1008,3 +1008,30 @@ export const consumerDashboard: ConsumerDashboard = {
     .sort((a, b) => b.verified_at.localeCompare(a.verified_at))
     .slice(0, 8),
 };
+
+export const defaultUsers: import('./types').User[] = [
+  {
+    id: 'USR-OP-001',
+    name: 'Elena Rostova',
+    email: 'operator@intain.com',
+    role: 'operator',
+    organization: 'Intain Ingestion Operations',
+    token: 'mock-jwt-token-operator-001',
+  },
+  {
+    id: 'USR-REV-001',
+    name: 'Marcus Vance',
+    email: 'reviewer@intain.com',
+    role: 'reviewer',
+    organization: 'Credit Underwriting & Review',
+    token: 'mock-jwt-token-reviewer-001',
+  },
+  {
+    id: 'USR-CON-001',
+    name: 'Sarah Sterling',
+    email: 'consumer@intain.com',
+    role: 'consumer',
+    organization: 'Apex Capital & Secondary Markets',
+    token: 'mock-jwt-token-consumer-001',
+  },
+];

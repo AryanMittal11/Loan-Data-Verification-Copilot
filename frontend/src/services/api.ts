@@ -9,6 +9,7 @@ import {
   operatorDashboard,
   reviewerDashboard,
   consumerDashboard,
+  defaultUsers,
 } from '../mockData';
 import type {
   LoanRecord,
@@ -27,7 +28,12 @@ import type {
   LoanType,
   PaymentStatus,
   DocumentStatus,
+  User,
+  Role,
+  RegisterData,
 } from '../types';
+
+let mockUsersList = [...defaultUsers];
 
 const BASE = import.meta.env.VITE_API_BASE ?? '';
 const LATENCY = 180;
@@ -75,6 +81,69 @@ export const api = {
   getConsumerDashboard: () =>
     fetchJson<ConsumerDashboard>('/dashboard/consumer', consumerDashboard),
   getImportEvents: () => fetchJson<ImportEvent[]>('/imports', importEvents),
+  
+  login: async (email: string, _password?: string, role?: Role): Promise<User> => {
+    if (BASE) {
+      try {
+        const res = await fetch(`${BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: _password, role }),
+        });
+        if (res.ok) return await res.json();
+      } catch {
+        // fallback to local mock
+      }
+    }
+    const found = mockUsersList.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (found) {
+      if (role && found.role !== role) {
+        throw new Error(`This account is registered as ${found.role.toUpperCase()}, not ${role.toUpperCase()}. Please use the ${found.role} portal.`);
+      }
+      return delay(structuredCloneSafe(found));
+    }
+    // Dynamic mock user for demo
+    const targetRole = role || 'operator';
+    const mockUser: User = {
+      id: `USR-${Date.now().toString().slice(-6)}`,
+      name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      email,
+      role: targetRole,
+      organization: `${targetRole.toUpperCase()} Department`,
+      token: `mock-jwt-token-${targetRole}-${Date.now()}`,
+    };
+    mockUsersList.push(mockUser);
+    return delay(mockUser);
+  },
+
+  register: async (data: RegisterData): Promise<User> => {
+    if (BASE) {
+      try {
+        const res = await fetch(`${BASE}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) return await res.json();
+      } catch {
+        // fallback to local mock
+      }
+    }
+    const existing = mockUsersList.find((u) => u.email.toLowerCase() === data.email.toLowerCase());
+    if (existing) {
+      throw new Error('An account with this email address already exists. Please sign in instead.');
+    }
+    const newUser: User = {
+      id: `USR-${Date.now().toString().slice(-6)}`,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      organization: data.organization || `${data.role.toUpperCase()} Workspace`,
+      token: `mock-jwt-token-${data.role}-${Date.now()}`,
+    };
+    mockUsersList.push(newUser);
+    return delay(newUser);
+  },
 
   postExceptionDecision: async (id: string, status: ExceptionStatus, actor: string, comment?: string) => {
     const ex = exceptions.find((e) => e.id === id);
