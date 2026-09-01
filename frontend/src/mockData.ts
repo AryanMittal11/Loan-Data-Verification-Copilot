@@ -996,9 +996,37 @@ export const reviewerDashboard: ReviewerDashboard = {
     '8 open exceptions in the queue. 3 are high-severity documentation gaps (missing closing disclosures or HELOC agreements) — these should be held for correction, not auto-verified. 2 are low-severity pending documents that will clear once the missing paperwork is uploaded. 2 are days-past-due consistency checks that need servicer confirmation before a decision. The AI recommends working the high-severity items first.',
 };
 
+// --- Compute data quality score dynamically (mirrors backend logic) ---
+const _openExceptions = exceptions.filter((e) => e.status === 'open');
+const _loansWithOpenSet = new Set(_openExceptions.map((e) => e.loan_id));
+const _loansWithSevereSet = new Set(
+  _openExceptions
+    .filter((e) => e.severity === 'high' || e.severity === 'medium')
+    .map((e) => e.loan_id),
+);
+const _totalLoans = loans.length;
+const _completeness = _totalLoans > 0
+  ? ((_totalLoans - _loansWithOpenSet.size) / _totalLoans) * 100
+  : 100;
+const _accuracy = _totalLoans > 0
+  ? ((_totalLoans - _loansWithSevereSet.size) / _totalLoans) * 100
+  : 100;
+const _verification = _totalLoans > 0
+  ? (verifiedRecords.length / _totalLoans) * 100
+  : 0;
+const _compositeScore = Math.min(
+  100,
+  _completeness * 0.4 + _accuracy * 0.35 + _verification * 0.25,
+);
+
 export const consumerDashboard: ConsumerDashboard = {
   verified_count: verifiedRecords.length,
-  data_quality_score: 96.4,
+  data_quality_score: Math.round(_compositeScore * 10) / 10,
+  quality_breakdown: {
+    completeness: Math.round(_completeness * 10) / 10,
+    accuracy: Math.round(_accuracy * 10) / 10,
+    verification: Math.round(_verification * 10) / 10,
+  },
   verification_history: verifiedRecords
     .map((v) => ({
       loan_id: v.loan_id,
@@ -1008,6 +1036,7 @@ export const consumerDashboard: ConsumerDashboard = {
     .sort((a, b) => b.verified_at.localeCompare(a.verified_at))
     .slice(0, 8),
 };
+
 
 export const defaultUsers: import('./types').User[] = [
   {

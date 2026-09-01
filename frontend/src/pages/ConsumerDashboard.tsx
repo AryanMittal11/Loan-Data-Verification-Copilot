@@ -96,12 +96,37 @@ export function ConsumerDashboard() {
               </span>
               <span className="text-sm text-warmink-mute">/ 100</span>
             </div>
-            <div className="mt-2 h-1.5 bg-warmink/10">
+            <div className="mt-2 h-1.5 bg-warmink/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-verified transition-all"
+                className="h-full bg-verified transition-all rounded-full"
                 style={{ width: `${d.data_quality_score}%` }}
               />
             </div>
+            {d.quality_breakdown && (
+              <div className="mt-3 space-y-1.5">
+                {([
+                  { label: 'Completeness', value: d.quality_breakdown.completeness, weight: '40%', color: 'bg-emerald-500' },
+                  { label: 'Accuracy', value: d.quality_breakdown.accuracy, weight: '35%', color: 'bg-sky-500' },
+                  { label: 'Verification', value: d.quality_breakdown.verification, weight: '25%', color: 'bg-amber-500' },
+                ] as const).map((dim) => (
+                  <div key={dim.label} className="flex items-center gap-2">
+                    <span className="text-2xs text-warmink-mute w-[80px] shrink-0">
+                      {dim.label}
+                      <span className="text-warmink-mute/50 ml-0.5">({dim.weight})</span>
+                    </span>
+                    <div className="flex-1 h-1 bg-warmink/10 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${dim.color} transition-all rounded-full`}
+                        style={{ width: `${dim.value}%` }}
+                      />
+                    </div>
+                    <span className="text-2xs font-mono tnum text-warmink-mute w-[38px] text-right">
+                      {dim.value.toFixed(1)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <Stat
             label="Verified coverage"
