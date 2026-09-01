@@ -18,12 +18,11 @@ import {
   Download,
   FileSpreadsheet,
   ArrowRight,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 export function OperatorDashboard() {
-  const { actor, switchRole } = useApp();
+  const { actor } = useApp();
   const nav = useNavigate();
   const [data, setData] = useState<OpDashType | null>(null);
   const [imports, setImports] = useState<ImportEvent[] | null>(null);
@@ -35,12 +34,17 @@ export function OperatorDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, imps] = await Promise.all([
-      api.getOperatorDashboard(),
-      api.getImportEvents(),
-    ]);
-    setData(d);
-    setImports(imps);
+    try {
+      const [d, imps] = await Promise.all([
+        api.getOperatorDashboard(),
+        api.getImportEvents(),
+      ]);
+      setData(d);
+      setImports(imps);
+    } catch {
+      setData(null);
+      setImports([]);
+    }
     setLoading(false);
   }, []);
 
@@ -51,20 +55,14 @@ export function OperatorDashboard() {
   const handleFile = useCallback(
     async (file: File) => {
       setUploading(true);
+      setParseResult(null);
       try {
         const text = await file.text();
         const ev = await api.importCsvTape(file.name, 'Encompass', text, actor);
         setParseResult(ev);
         await load();
-      } catch {
-        const ev = await api.importCsvTape(
-          file.name,
-          'Encompass',
-          SAMPLE_TAPES.flagged.content,
-          actor,
-        );
-        setParseResult(ev);
-        await load();
+      } catch (err: any) {
+        alert(`File import error: ${err?.message || 'Failed to process CSV file.'}`);
       } finally {
         setUploading(false);
       }
@@ -74,11 +72,16 @@ export function OperatorDashboard() {
 
   const loadSampleTape = async (type: 'clean' | 'flagged') => {
     setUploading(true);
-    const sample = SAMPLE_TAPES[type];
-    const ev = await api.importCsvTape(sample.filename, 'Encompass', sample.content, actor);
-    setParseResult(ev);
-    await load();
-    setUploading(false);
+    try {
+      const sample = SAMPLE_TAPES[type];
+      const ev = await api.importCsvTape(sample.filename, 'Encompass', sample.content, actor);
+      setParseResult(ev);
+      await load();
+    } catch (err: any) {
+      alert(`Import error: ${err?.message || 'Failed to process sample tape.'}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onDrop = useCallback(
@@ -101,7 +104,7 @@ export function OperatorDashboard() {
   }
 
   const d = data ?? {
-    validation: { pass: 14, fail: 2, flagged: 8 },
+    validation: { pass: 0, fail: 0, flagged: 0 },
     needs_correction: [],
     recent_imports: [],
   };
@@ -120,40 +123,35 @@ export function OperatorDashboard() {
       />
       <PageHeader
         title="Operator dashboard"
-        subtitle="Upload loan tapes, watch import and validation health, and route flagged records to the reviewer queue."
-        right={
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={() =>
-                downloadCsv(SAMPLE_TAPES.flagged.filename, SAMPLE_TAPES.flagged.content)
-              }
-            >
-              <Download className="w-4 h-4" strokeWidth={1.75} />
-              Download sample tape
-            </Button>
-          </div>
-        }
+        subtitle="Upload loan tapes, track ingestion pipeline health, and review automated rule outputs."
       />
 
       <div className="px-6 lg:px-10 py-8 space-y-8">
-        {/* Ledger stats banner */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-warmink/12 border border-warmink/12">
-          <Stat label="Loans on file" value={d.validation.pass + d.validation.flagged} />
+          <Stat label="Total imported files" value={impsList.length} />
           <Stat label="Passed validation" value={d.validation.pass} tone="verified" />
-          <Stat label="Flagged for review" value={d.validation.flagged} tone="pending" />
-          <Stat label="Rows failed to import" value={d.validation.fail} tone="exception" />
+          <Stat label="Flagged exceptions" value={d.validation.flagged} tone="pending" />
+          <Stat label="Failed row imports" value={d.validation.fail} tone="exception" />
         </div>
 
-        {/* Upload widget and Needs correction */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Upload card */}
           <Card className="lg:col-span-2">
             <CardHeader
-              title="Upload loan tape"
-              subtitle="Drag a CSV file here or select one of the pre-loaded sample tapes."
-              right={<Upload className="w-4 h-4 text-warmink-mute" strokeWidth={1.75} />}
+              title="Ingest loan tape"
+              subtitle="Upload CSV exports from Encompass, Byte, Calyx, or servicer updates."
             />
-            <div className="p-5 space-y-4">
+            <div className="p-5">
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                }}
+              />
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -163,299 +161,202 @@ export function OperatorDashboard() {
                 onDrop={onDrop}
                 onClick={() => inputRef.current?.click()}
                 className={cn(
-                  'border-2 border-dashed px-6 py-10 text-center cursor-pointer transition-colors',
+                  'border-2 border-dashed p-8 text-center cursor-pointer transition-all',
                   dragOver
                     ? 'border-verified bg-verified/5'
-                    : 'border-warmink/25 hover:border-ink/40 hover:bg-warmink/5',
+                    : 'border-warmink/25 hover:border-warmink/50 bg-parchment-lighter',
                 )}
               >
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleFile(f);
-                  }}
+                <UploadCloud
+                  className="w-10 h-10 mx-auto text-warmink-mute mb-3"
+                  strokeWidth={1.5}
                 />
-                {uploading ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <FileUp className="w-7 h-7 text-verified animate-pulse" strokeWidth={1.5} />
-                    <p className="text-sm text-warmink-soft font-medium">
-                      Parsing tape and executing validation engine rules…
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <UploadCloud className="w-8 h-8 text-warmink-mute" strokeWidth={1.5} />
-                    <p className="text-sm text-warmink font-medium">
-                      Drop loan tape CSV here or <span className="underline underline-offset-2">browse files</span>
-                    </p>
-                    <p className="text-2xs text-warmink-mute font-mono max-w-lg mt-1">
-                      Columns: loan_id, borrower_id, loan_type, origination_date, maturity_date,
-                      original_principal, current_balance, interest_rate, term_months, borrower_state,
-                      payment_status, days_past_due, servicer_name, document_status
-                    </p>
-                  </div>
-                )}
+                <p className="text-sm font-medium text-warmink">
+                  {uploading ? 'Parsing & running rules…' : 'Drop loan tape CSV here, or click to browse'}
+                </p>
+                <p className="mt-1 text-2xs text-warmink-mute font-mono">
+                  Accepts CSV format · loan_id, borrower_id, principal, balance, rate, dates, servicer
+                </p>
               </div>
 
-              {/* Fast quick-test action buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-warmink/10">
-                <span className="text-2xs uppercase tracking-wide text-warmink-mute font-medium flex items-center gap-1.5">
-                  <FileSpreadsheet className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  Quick test with sample tapes:
-                </span>
+              <div className="mt-4 pt-4 border-t border-warmink/10 flex flex-wrap items-center justify-between gap-3 text-2xs">
+                <span className="text-warmink-mute">Or load sample tape fixture:</span>
                 <div className="flex gap-2">
                   <Button
-                    variant="secondary"
-                    className="text-xs py-1.5"
-                    disabled={uploading}
+                    variant="ghost"
                     onClick={() => loadSampleTape('clean')}
+                    disabled={uploading}
                   >
-                    Test clean tape (5 loans)
+                    <FileUp className="w-3.5 h-3.5" />
+                    Clean conforming tape
                   </Button>
                   <Button
-                    variant="primary"
-                    className="text-xs py-1.5"
-                    disabled={uploading}
+                    variant="ghost"
                     onClick={() => loadSampleTape('flagged')}
+                    disabled={uploading}
                   >
-                    Test flagged tape (with exceptions)
+                    <FileWarning className="w-3.5 h-3.5 text-amber-700" />
+                    Tape with intentional exceptions
                   </Button>
                 </div>
               </div>
             </div>
           </Card>
 
-          <Card surface="ink">
+          {/* Import summary output */}
+          <Card>
             <CardHeader
-              title="Needs correction"
-              subtitle="Records routed to the reviewer queue"
-              right={<AlertTriangle className="w-4 h-4 text-pending-light" strokeWidth={1.75} />}
+              title="Parse & Rule Summary"
+              subtitle="Result of last uploaded tape batch"
             />
-            <div className="p-5 space-y-3">
-              {d.needs_correction.length === 0 ? (
-                <EmptyState
-                  icon={<CheckCircle2 className="w-6 h-6 text-verified-light" strokeWidth={1.5} />}
-                  title="No records need correction — the queue is clear."
-                />
-              ) : (
-                d.needs_correction.map((c) => (
-                  <button
-                    key={c.loan_id}
-                    onClick={() => {
-                      switchRole('reviewer');
-                      nav(`/reviewer/loan/${c.loan_id}`);
-                    }}
-                    className="w-full text-left flex items-center justify-between gap-3 py-2.5 border-b border-paper/10 last:border-0 hover:bg-paper/5 -mx-2 px-2 transition-colors group"
-                  >
+            <div className="p-5">
+              {parseResult ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-medium text-warmink truncate">
+                      {parseResult.file_name}
+                    </span>
+                    <Pill tone={parseResult.status === 'parsed' ? 'verified' : 'exception'}>
+                      {parseResult.status}
+                    </Pill>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-2xs font-mono py-2 bg-parchment border border-warmink/15">
                     <div>
-                      <p className="font-mono text-sm text-paper group-hover:underline">
-                        {c.loan_id}
-                      </p>
-                      <p className="text-2xs text-paper/50 uppercase tracking-wide">
-                        {c.rule_type.replace(/_/g, ' ')}
+                      <div className="text-warmink-mute">Imported</div>
+                      <div className="text-sm font-bold text-warmink">{parseResult.rows_imported}</div>
+                    </div>
+                    <div>
+                      <div className="text-warmink-mute">Flagged</div>
+                      <div className="text-sm font-bold text-pending-dark">{parseResult.rows_flagged}</div>
+                    </div>
+                    <div>
+                      <div className="text-warmink-mute">Failed</div>
+                      <div className="text-sm font-bold text-red-600">{parseResult.rows_failed}</div>
+                    </div>
+                  </div>
+                  {parseResult.failed_rows && parseResult.failed_rows.length > 0 && (
+                    <div className="p-2 bg-red-50 border border-red-200 text-2xs text-red-800 space-y-1">
+                      <div className="font-semibold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-red-600" /> Failed Rows:
+                      </div>
+                      {parseResult.failed_rows.map((fr, idx) => (
+                        <div key={idx}>
+                          Row {fr.row}: {fr.reason}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {parseResult.rows_flagged > 0 && (
+                    <div className="pt-2">
+                      <p className="text-2xs text-warmink-soft mb-2">
+                        {parseResult.rows_flagged} exception(s) routed to Reviewer Queue.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Pill
-                        tone={
-                          c.severity === 'high'
-                            ? 'exception'
-                            : c.severity === 'medium'
-                              ? 'pending'
-                              : 'neutral'
-                        }
-                      >
-                        {c.severity}
-                      </Pill>
-                      <ArrowRight className="w-3.5 h-3.5 text-paper/40 group-hover:text-paper" />
-                    </div>
-                  </button>
-                ))
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-2xs text-warmink-mute">
+                  No upload performed in this session yet. Drop a CSV file on the left to test ingestion.
+                </div>
               )}
-              <div className="pt-2">
-                <Button
-                  variant="ink"
-                  className="w-full text-xs"
-                  onClick={() => {
-                    switchRole('reviewer');
-                    nav('/reviewer/queue');
-                  }}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-verified-light" />
-                  Open Reviewer Exception Queue
-                </Button>
-              </div>
             </div>
           </Card>
         </div>
 
-        {/* Live Parse Summary modal/card */}
-        {parseResult && (
-          <ParseSummary
-            ev={parseResult}
-            onClose={() => setParseResult(null)}
-            onOpenQueue={() => {
-              switchRole('reviewer');
-              nav('/reviewer/queue');
-            }}
+        {/* Needs Correction Table */}
+        <Card>
+          <CardHeader
+            title="Records requiring reviewer attention"
+            subtitle="Flagged loans grouped by severity and active validation rule"
           />
-        )}
+          {d.needs_correction.length === 0 ? (
+            <div className="p-6 text-center text-xs text-warmink-mute flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-verified" />
+              No records currently need correction. Pipeline is clean.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-2xs uppercase tracking-wide text-warmink-mute border-b border-warmink/15">
+                    <th className="text-left font-medium px-5 py-2.5">Loan ID</th>
+                    <th className="text-left font-medium px-3 py-2.5">Rule Code</th>
+                    <th className="text-left font-medium px-3 py-2.5">Severity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.needs_correction.map((item, idx) => (
+                    <tr key={idx} className="border-b border-warmink/10 hover:bg-warmink/5">
+                      <td className="px-5 py-2.5 font-mono text-xs font-medium text-warmink">
+                        {item.loan_id}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-2xs text-warmink-soft">
+                        {item.rule_type}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <Pill tone={item.severity === 'high' ? 'exception' : item.severity === 'medium' ? 'pending' : 'neutral'}>
+                          {item.severity}
+                        </Pill>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
 
-        {/* Import history table */}
+        {/* Recent Imports History */}
         <Card>
           <CardHeader
             title="Import history"
-            subtitle="Recent loan tape uploads and their parse validation results"
-            right={
-              <Button variant="ghost" onClick={() => nav('/operator/imports')}>
-                View all
-              </Button>
-            }
+            subtitle="Recent source files ingested into Loan Record store"
           />
-          <ImportTable imports={impsList.slice(0, 6)} onOpen={(ev) => setParseResult(ev)} />
+          {impsList.length === 0 ? (
+            <EmptyState
+              icon={<Upload className="w-6 h-6" strokeWidth={1.5} />}
+              title="No import events recorded yet."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-2xs uppercase tracking-wide text-warmink-mute border-b border-warmink/15">
+                    <th className="text-left font-medium px-5 py-2.5">File Name</th>
+                    <th className="text-left font-medium px-3 py-2.5">Source Type</th>
+                    <th className="text-left font-medium px-3 py-2.5">Uploaded At</th>
+                    <th className="text-right font-medium px-3 py-2.5">Rows</th>
+                    <th className="text-right font-medium px-3 py-2.5">Flagged</th>
+                    <th className="text-left font-medium px-3 py-2.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {impsList.map((imp) => (
+                    <tr key={imp.id} className="border-b border-warmink/10 hover:bg-warmink/5">
+                      <td className="px-5 py-3 font-mono text-xs text-warmink font-medium">
+                        {imp.file_name}
+                      </td>
+                      <td className="px-3 py-3 text-warmink-soft">{imp.source_system}</td>
+                      <td className="px-3 py-3 font-mono text-2xs text-warmink-mute">
+                        {fmtDateTime(imp.uploaded_at)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono tnum">{imp.rows_imported}</td>
+                      <td className="px-3 py-3 text-right font-mono tnum text-pending-dark">
+                        {imp.rows_flagged}
+                      </td>
+                      <td className="px-3 py-3">
+                        <Pill tone={imp.status === 'parsed' ? 'verified' : 'exception'}>
+                          {imp.status}
+                        </Pill>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
-    </div>
-  );
-}
-
-function ParseSummary({
-  ev,
-  onClose,
-  onOpenQueue,
-}: {
-  ev: ImportEvent;
-  onClose: () => void;
-  onOpenQueue: () => void;
-}) {
-  return (
-    <Card surface="parchmentDim" className="border-2 border-warmink/30">
-      <CardHeader
-        title={`Parse summary — ${ev.file_name}`}
-        subtitle={`Uploaded ${fmtDateTime(ev.uploaded_at)} from ${ev.source_system}`}
-        right={
-          <button
-            onClick={onClose}
-            className="text-2xs text-warmink-mute hover:text-warmink uppercase tracking-wide border border-warmink/20 px-2 py-1 bg-parchment"
-          >
-            Dismiss
-          </button>
-        }
-      />
-      <div className="p-5 space-y-4">
-        <div className="grid grid-cols-3 gap-px bg-warmink/12 border border-warmink/12">
-          <Stat label="Rows imported" value={ev.rows_imported} tone="verified" />
-          <Stat label="Rows flagged" value={ev.rows_flagged} tone="pending" />
-          <Stat label="Rows failed" value={ev.rows_failed} tone="exception" />
-        </div>
-
-        {ev.failed_rows && ev.failed_rows.length > 0 ? (
-          <div>
-            <h4 className="text-xs uppercase tracking-wide text-warmink-mute mb-2 flex items-center gap-1.5 font-semibold">
-              <FileWarning className="w-4 h-4 text-exception" strokeWidth={1.75} />
-              Failed rows breakdown ({ev.failed_rows.length})
-            </h4>
-            <ul className="border border-warmink/12 divide-y divide-warmink/10 bg-parchment-lighter">
-              {ev.failed_rows.map((r, i) => (
-                <li key={i} className="flex items-start gap-3 px-4 py-2.5 text-sm">
-                  <span className="font-mono text-xs text-exception-dark font-medium shrink-0">
-                    Row {r.row}
-                  </span>
-                  {r.loan_id && (
-                    <span className="font-mono text-xs text-warmink font-medium shrink-0">
-                      {r.loan_id}
-                    </span>
-                  )}
-                  <span className="text-warmink-soft">{r.reason}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-sm text-warmink-soft flex items-center gap-2 bg-parchment-lighter border border-warmink/10 p-3">
-            <CheckCircle2 className="w-4 h-4 text-verified" strokeWidth={1.75} />
-            All rows parsed cleanly. Flagged records have been routed to the Reviewer Exception Queue.
-          </p>
-        )}
-
-        <div className="flex gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>
-            Upload another tape
-          </Button>
-          <Button variant="primary" onClick={onOpenQueue}>
-            Open Reviewer Queue ({ev.rows_flagged} flagged)
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-export function ImportTable({
-  imports,
-  onOpen,
-}: {
-  imports: ImportEvent[];
-  onOpen?: (ev: ImportEvent) => void;
-}) {
-  if (imports.length === 0) {
-    return (
-      <EmptyState
-        icon={<Upload className="w-6 h-6" strokeWidth={1.5} />}
-        title="No imports yet — upload a loan tape to get started."
-      />
-    );
-  }
-  return (
-    <div className="overflow-x-auto thin-scroll">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-2xs uppercase tracking-wide text-warmink-mute border-b border-warmink/15">
-            <th className="text-left font-medium px-5 py-2.5">File</th>
-            <th className="text-left font-medium px-3 py-2.5">Source</th>
-            <th className="text-right font-medium px-3 py-2.5">Imported</th>
-            <th className="text-right font-medium px-3 py-2.5">Flagged</th>
-            <th className="text-right font-medium px-3 py-2.5">Failed</th>
-            <th className="text-left font-medium px-3 py-2.5">Uploaded</th>
-            <th className="px-3 py-2.5 text-right">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {imports.map((ev) => (
-            <tr
-              key={ev.id}
-              className="ledger-row hover:bg-warmink/5 cursor-pointer"
-              onClick={() => onOpen?.(ev)}
-            >
-              <td className="px-5 py-3 font-mono text-xs text-warmink font-medium">
-                {ev.file_name}
-              </td>
-              <td className="px-3 py-3 text-warmink-soft">{ev.source_system}</td>
-              <td className="px-3 py-3 text-right font-mono tnum text-verified">
-                {ev.rows_imported}
-              </td>
-              <td className="px-3 py-3 text-right font-mono tnum text-pending-dark">
-                {ev.rows_flagged}
-              </td>
-              <td className="px-3 py-3 text-right font-mono tnum text-exception">
-                {ev.rows_failed}
-              </td>
-              <td className="px-3 py-3 font-mono text-xs text-warmink-mute">
-                {fmtDateTime(ev.uploaded_at)}
-              </td>
-              <td className="px-3 py-3 text-right">
-                <Pill tone={ev.status === 'parsed' ? 'verified' : 'exception'}>
-                  {ev.status}
-                </Pill>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

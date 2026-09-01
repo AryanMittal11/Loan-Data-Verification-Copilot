@@ -43,15 +43,15 @@ const roleConfigs: Record<Role, RoleConfig> = {
     badge: 'Ingestion & Pipeline',
     blurb: 'Uploads raw CSV tapes, manages file lineage, and monitors automated validation health.',
     icon: Upload,
-    demoEmail: 'operator@intain.com',
-    demoName: 'Elena Rostova',
+    demoEmail: 'operator@example.com',
+    demoName: 'Data Operator',
     demoOrg: 'Intain Ingestion Operations',
     accentBorder: 'border-pending',
     accentBg: 'bg-pending/10',
     accentText: 'text-pending-dark',
     highlights: [
-      'Ingest multi-source loan tapes (Encompass, Byte, Calyx)',
-      'Automated batch validation against 15 rule sets',
+      'Ingest multi-source loan tapes (loan_tape, servicer_update, document_manifest)',
+      'Automated batch validation against 10 rule sets',
       'Row-level error diagnostics & lineage tracking',
     ],
   },
@@ -61,14 +61,14 @@ const roleConfigs: Record<Role, RoleConfig> = {
     badge: 'Compliance & AI Review',
     blurb: 'Triages flagged exception queues, consults AI recommendations, and seals loan records.',
     icon: ListChecks,
-    demoEmail: 'reviewer@intain.com',
-    demoName: 'Marcus Vance',
+    demoEmail: 'reviewer@example.com',
+    demoName: 'Reviewer User',
     demoOrg: 'Credit Underwriting & Review',
     accentBorder: 'border-verified',
     accentBg: 'bg-verified/10',
     accentText: 'text-verified',
     highlights: [
-      'Triage exceptions prioritized by severity (High/Med/Low)',
+      'Triage exceptions prioritized by severity (High/Medium/Low)',
       'Interactive AI Copilot for root-cause diagnosis & suggested fixes',
       'Human-in-the-loop approvals with SHA-256 digital stamp',
     ],
@@ -79,16 +79,16 @@ const roleConfigs: Record<Role, RoleConfig> = {
     badge: 'Auditing & Secondary Market',
     blurb: 'Accesses verified and sealed assets, audits tamper-evident chains, and exports clean portfolios.',
     icon: ShieldCheck,
-    demoEmail: 'consumer@intain.com',
-    demoName: 'Sarah Sterling',
-    demoOrg: 'Apex Capital & Secondary Markets',
+    demoEmail: 'consumer@example.com',
+    demoName: 'Data Consumer',
+    demoOrg: 'Capital Markets Analytics',
     accentBorder: 'border-ink/40',
     accentBg: 'bg-ink/5',
     accentText: 'text-ink',
     highlights: [
       'Inspect tamper-evident cryptographic verification certificates',
       'Immutable chronological audit timeline for every loan asset',
-      'Export certified loan packages as structured CSV / JSON',
+      'Export certified loan packages as structured CSV',
     ],
   },
 };
@@ -102,7 +102,7 @@ export function Login() {
   
   // Sign in fields
   const [email, setEmail] = useState(roleConfigs.operator.demoEmail);
-  const [password, setPassword] = useState('••••••••');
+  const [password, setPassword] = useState('demo-password');
   
   // Sign up fields
   const [name, setName] = useState('');
@@ -122,20 +122,21 @@ export function Login() {
     setError(null);
     setSuccessMsg(null);
     setEmail(roleConfigs[role].demoEmail);
+    setPassword('demo-password');
   };
 
-  const handleQuickDemo = (role: Role) => {
+  const handleAutoFillSeeded = (role: Role) => {
     setActiveRole(role);
     setAuthMode('signin');
     setEmail(roleConfigs[role].demoEmail);
-    setPassword('demopass123');
+    setPassword('demo-password');
     setError(null);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setError('Please enter your work email.');
+    if (!email.trim() || !password) {
+      setError('Please enter both your registered email and password.');
       return;
     }
     setError(null);
@@ -144,7 +145,7 @@ export function Login() {
       const user = await login({ email: email.trim(), password, role: activeRole });
       nav(`/${user.role}`);
     } catch (err: any) {
-      setError(err?.message || 'Authentication failed. Please verify credentials.');
+      setError(err?.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -152,8 +153,12 @@ export function Login() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !regEmail.trim()) {
-      setError('Full name and email are required to register.');
+    if (!name.trim() || !regEmail.trim() || !regPassword) {
+      setError('Full name, work email, and password are required to register.');
+      return;
+    }
+    if (regPassword.length < 4) {
+      setError('Password must be at least 4 characters long.');
       return;
     }
     setError(null);
@@ -166,7 +171,7 @@ export function Login() {
         role: activeRole,
         organization: regOrg.trim() || `${activeConfig.title} Dept`,
       });
-      setSuccessMsg(`Account created successfully as ${user.name}! Directing to workspace...`);
+      setSuccessMsg(`Account created successfully for ${user.name}! Directing to ${user.role.toUpperCase()} console...`);
       setTimeout(() => {
         nav(`/${user.role}`);
       }, 700);
@@ -193,25 +198,25 @@ export function Login() {
                     Loan Verification Copilot
                   </h1>
                   <span className="hidden sm:inline-flex px-2 py-0.5 text-2xs uppercase tracking-wider font-mono border border-verified/30 text-verified bg-verified/5">
-                    RBAC Portal
+                    RBAC Authentication Portal
                   </span>
                 </div>
                 <p className="text-xs text-warmink-mute mt-0.5">
-                  Intain Campus FinTech Challenge 2026 — Multi-Profile Access Gateway
+                  Secure Access Gateway — Authenticated Database Accounts Only
                 </p>
               </div>
             </div>
 
-            {/* Quick Demo Selector */}
+            {/* Seeded Account Auto-Fill Helpers */}
             <div className="flex items-center gap-2 self-start md:self-auto bg-parchment-lighter p-1 border border-warmink/15 text-xs">
               <span className="px-2 text-2xs text-warmink-mute uppercase tracking-wider font-medium flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-600" /> Quick Demo:
+                <Sparkles className="w-3 h-3 text-amber-600" /> Seeded Accounts:
               </span>
               {(['operator', 'reviewer', 'consumer'] as Role[]).map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => handleQuickDemo(r)}
+                  onClick={() => handleAutoFillSeeded(r)}
                   className={cn(
                     'px-2.5 py-1 text-2xs uppercase font-medium tracking-wide transition-all',
                     activeRole === r && authMode === 'signin'
@@ -229,19 +234,19 @@ export function Login() {
         {/* Main Content Area */}
         <div className="flex-1 px-6 lg:px-12 py-8 max-w-6xl w-full mx-auto flex flex-col justify-center">
           
-          {/* 3 Dedicated Role Selection Cards */}
+          {/* Role Selection Cards */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="font-slab text-lg font-semibold text-warmink">
-                  1. Select Profile Portal
+                  1. Select Target Role Portal
                 </h2>
                 <p className="text-xs text-warmink-mute">
-                  Each profile operates under an isolated role with strict RBAC boundaries.
+                  Authentication requires a database-verified account matching the target role permissions.
                 </p>
               </div>
               <span className="text-2xs font-mono text-warmink-soft border border-warmink/20 px-2 py-1 bg-parchment-lighter">
-                Active: <strong className="text-warmink uppercase">{activeConfig.title}</strong>
+                Active Portal: <strong className="text-warmink uppercase">{activeConfig.title}</strong>
               </span>
             </div>
 
@@ -294,7 +299,7 @@ export function Login() {
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-warmink/10 flex items-center justify-between text-2xs text-warmink-mute">
-                      <span>Default: <code className="font-mono text-warmink">{conf.demoEmail}</code></span>
+                      <span>Seeded: <code className="font-mono text-warmink">{conf.demoEmail}</code></span>
                       {isSelected ? (
                         <CheckCircle2 className="w-4 h-4 text-verified" />
                       ) : (
@@ -307,10 +312,10 @@ export function Login() {
             </div>
           </div>
 
-          {/* 2. Authentication Container: Sign In vs Sign Up */}
+          {/* Authentication Form Container */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-paper border border-warmink/20 shadow-sm p-6 md:p-8">
             
-            {/* Left Column: Form (Sign In / Sign Up) */}
+            {/* Form Column */}
             <div className="lg:col-span-7 flex flex-col justify-between">
               <div>
                 {/* Mode Tabs */}
@@ -329,7 +334,7 @@ export function Login() {
                           : 'border-transparent text-warmink-mute hover:text-warmink',
                       )}
                     >
-                      Sign In to {activeConfig.title.split(' ')[0]}
+                      Sign In ({activeConfig.title.split(' ')[0]})
                     </button>
                     <button
                       type="button"
@@ -346,12 +351,12 @@ export function Login() {
                           : 'border-transparent text-warmink-mute hover:text-warmink',
                       )}
                     >
-                      Create {activeConfig.title.split(' ')[0]} Account
+                      Register New {activeConfig.title.split(' ')[0]}
                     </button>
                   </div>
 
                   <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 bg-parchment border border-warmink/15 text-warmink-mute">
-                    Role: {activeRole}
+                    Portal: {activeRole}
                   </span>
                 </div>
 
@@ -374,7 +379,7 @@ export function Login() {
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div>
                       <label className="block text-2xs uppercase tracking-wider font-mono text-warmink-mute mb-1">
-                        Corporate / Work Email
+                        Registered Email
                       </label>
                       <div className="relative">
                         <Mail className="w-4 h-4 text-warmink-mute absolute left-3 top-2.5" />
@@ -394,15 +399,15 @@ export function Login() {
                         <label className="text-2xs uppercase tracking-wider font-mono text-warmink-mute">
                           Password
                         </label>
-                        <span className="text-3xs text-warmink-mute">Demo mode: any password</span>
                       </div>
                       <div className="relative">
                         <Lock className="w-4 h-4 text-warmink-mute absolute left-3 top-2.5" />
                         <input
                           type={showPassword ? 'text' : 'password'}
+                          required
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Enter password"
+                          placeholder="Enter your password"
                           className="w-full pl-9 pr-10 py-2 bg-parchment-lightest border border-warmink/20 text-sm font-mono text-warmink placeholder:text-warmink-mute/50 focus:border-ink focus:outline-none"
                         />
                         <button
@@ -415,13 +420,6 @@ export function Login() {
                       </div>
                     </div>
 
-                    <div className="pt-2 flex items-center justify-between">
-                      <label className="flex items-center gap-2 text-xs text-warmink-soft cursor-pointer">
-                        <input type="checkbox" defaultChecked className="rounded-none accent-ink" />
-                        <span>Remember credentials for this session</span>
-                      </label>
-                    </div>
-
                     <button
                       type="submit"
                       disabled={loading}
@@ -432,7 +430,7 @@ export function Login() {
                       )}
                     >
                       {loading ? (
-                        'Authenticating…'
+                        'Verifying Credentials…'
                       ) : (
                         <>
                           <UserCheck className="w-4 h-4" />
@@ -455,7 +453,7 @@ export function Login() {
                           required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Jane Doe"
+                          placeholder="e.g. Alex Morgan"
                           className="w-full pl-9 pr-3 py-2 bg-parchment-lightest border border-warmink/20 text-sm text-warmink placeholder:text-warmink-mute/50 focus:border-ink focus:outline-none"
                         />
                       </div>
@@ -473,7 +471,7 @@ export function Login() {
                             required
                             value={regEmail}
                             onChange={(e) => setRegEmail(e.target.value)}
-                            placeholder="jane@bank.com"
+                            placeholder="alex@company.com"
                             className="w-full pl-9 pr-3 py-2 bg-parchment-lightest border border-warmink/20 text-sm font-mono text-warmink placeholder:text-warmink-mute/50 focus:border-ink focus:outline-none"
                           />
                         </div>
@@ -489,7 +487,7 @@ export function Login() {
                             type="text"
                             value={regOrg}
                             onChange={(e) => setRegOrg(e.target.value)}
-                            placeholder="e.g. Structured Credit"
+                            placeholder="e.g. Compliance Dept"
                             className="w-full pl-9 pr-3 py-2 bg-parchment-lightest border border-warmink/20 text-sm text-warmink placeholder:text-warmink-mute/50 focus:border-ink focus:outline-none"
                           />
                         </div>
@@ -498,7 +496,7 @@ export function Login() {
 
                     <div>
                       <label className="block text-2xs uppercase tracking-wider font-mono text-warmink-mute mb-1">
-                        Password
+                        Password (min. 4 characters)
                       </label>
                       <div className="relative">
                         <Lock className="w-4 h-4 text-warmink-mute absolute left-3 top-2.5" />
@@ -507,7 +505,7 @@ export function Login() {
                           required
                           value={regPassword}
                           onChange={(e) => setRegPassword(e.target.value)}
-                          placeholder="Create strong password"
+                          placeholder="Create account password"
                           className="w-full pl-9 pr-10 py-2 bg-parchment-lightest border border-warmink/20 text-sm font-mono text-warmink placeholder:text-warmink-mute/50 focus:border-ink focus:outline-none"
                         />
                         <button
@@ -521,10 +519,10 @@ export function Login() {
                     </div>
 
                     <div className="p-2.5 bg-parchment border border-warmink/12 text-2xs text-warmink-soft">
-                      <span>Assigned Role: </span>
+                      <span>Assigned Account Role: </span>
                       <strong className="text-warmink font-mono uppercase">{activeConfig.title}</strong>
                       <span className="block mt-0.5 text-warmink-mute">
-                        Access permissions will be provisioned automatically for {activeRole} workflows.
+                        Your account will be created directly in the PostgreSQL database with bcrypt password hashing.
                       </span>
                     </div>
 
@@ -551,13 +549,13 @@ export function Login() {
               </div>
             </div>
 
-            {/* Right Column: Profile Scope & Active Session Info */}
+            {/* Scope Column */}
             <div className="lg:col-span-5 bg-parchment-lighter p-5 border border-warmink/15 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className={cn('w-2.5 h-2.5 rounded-full', activeRole === 'operator' ? 'bg-amber-500' : activeRole === 'reviewer' ? 'bg-emerald-600' : 'bg-slate-800')} />
                   <h4 className="font-slab text-sm font-semibold text-warmink">
-                    {activeConfig.title} Security Scope
+                    {activeConfig.title} Scope
                   </h4>
                 </div>
                 <p className="text-xs text-warmink-soft leading-relaxed mb-4">
@@ -581,17 +579,17 @@ export function Login() {
 
               <div className="pt-4 border-t border-warmink/15">
                 <div className="flex items-center justify-between text-2xs text-warmink-mute mb-1.5">
-                  <span>Pre-Seeded Demo Persona</span>
+                  <span>Seeded Account Credential</span>
                   <span className="font-mono text-warmink">{activeConfig.demoName}</span>
                 </div>
                 <div className="p-2.5 bg-paper border border-warmink/12 font-mono text-xs flex items-center justify-between">
-                  <span className="text-warmink truncate">{activeConfig.demoEmail}</span>
+                  <div className="min-w-0">
+                    <span className="text-warmink block truncate">{activeConfig.demoEmail}</span>
+                    <span className="text-3xs text-warmink-mute block font-sans">Pass: demo-password</span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setEmail(activeConfig.demoEmail);
-                      setAuthMode('signin');
-                    }}
+                    onClick={() => handleAutoFillSeeded(activeRole)}
                     className="text-2xs text-ink uppercase tracking-wider font-sans font-medium hover:underline shrink-0 ml-2"
                   >
                     Auto-Fill
@@ -605,8 +603,8 @@ export function Login() {
 
         {/* Footer */}
         <footer className="mt-auto px-6 lg:px-12 py-4 border-t border-warmink/12 text-2xs text-warmink-mute flex flex-wrap items-center justify-between gap-2 bg-parchment">
-          <span>Intain Campus FinTech Challenge 2026 — Role-Based Access Control Console</span>
-          <span>SHA-256 Tamper Evident Verification Ledger · IBM Plex Typography</span>
+          <span>Loan Data Verification Copilot — Production Database RBAC Console</span>
+          <span>SHA-256 Tamper Evident Verification Ledger</span>
         </footer>
       </div>
     </div>

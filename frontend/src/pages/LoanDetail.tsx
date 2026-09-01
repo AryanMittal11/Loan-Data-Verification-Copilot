@@ -73,7 +73,7 @@ function fieldValue(field: keyof LoanRecord, loan: LoanRecord): string {
 export function LoanDetail() {
   const { loanId } = useParams<{ loanId: string }>();
   const nav = useNavigate();
-  const { actor, switchRole } = useApp();
+  const { actor } = useApp();
   const [loan, setLoan] = useState<LoanRecord | null>(null);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [recs, setRecs] = useState<AIRecommendation[]>([]);
@@ -115,45 +115,61 @@ export function LoanDetail() {
   const openExceptions = exceptions.filter((e) => e.status === 'open');
 
   const handleAIAction = async (recId: string, action: 'accept' | 'reject' | 'edit') => {
+    const rec = recs.find((r) => r.id === recId);
     if (action === 'edit') {
       setEditing(recId);
-      const rec = recs.find((r) => r.id === recId);
       setEditText(rec?.suggested_correction ?? '');
       return;
     }
     setBusy(true);
-    await api.postAIAction(recId, action);
-    setRecs((rs) =>
-      rs.map((r) =>
-        r.id === recId
-          ? { ...r, status: (action === 'accept' ? 'accepted' : 'rejected') as AIStatus }
-          : r,
-      ),
-    );
-    // Refresh loan data in case a field was corrected
-    if (loanId) {
-      const refreshedLoan = await api.getLoan(loanId);
-      if (refreshedLoan) setLoan(refreshedLoan);
+    const targetId = rec?.exception_id || recId;
+    try {
+      await api.postAIAction(targetId, action);
+      setRecs((rs) =>
+        rs.map((r) =>
+          r.id === recId
+            ? { ...r, status: (action === 'accept' ? 'accepted' : 'rejected') as AIStatus }
+            : r,
+        ),
+      );
+      if (loanId) {
+        const refreshedLoan = await api.getLoan(loanId);
+        if (refreshedLoan) setLoan(refreshedLoan);
+        const refreshedExs = await api.getExceptions();
+        setExceptions(refreshedExs.filter((e) => e.loan_id === loanId));
+      }
+    } catch (err: any) {
+      alert(`Action error: ${err?.message || 'Failed to apply action.'}`);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const saveEdit = async (recId: string) => {
     setBusy(true);
-    await api.postAIAction(recId, 'edit', editText);
-    setRecs((rs) =>
-      rs.map((r) =>
-        r.id === recId
-          ? { ...r, status: 'edited' as AIStatus, suggested_correction: editText }
-          : r,
-      ),
-    );
-    setEditing(null);
-    if (loanId) {
-      const refreshedLoan = await api.getLoan(loanId);
-      if (refreshedLoan) setLoan(refreshedLoan);
+    const rec = recs.find((r) => r.id === recId);
+    const targetId = rec?.exception_id || recId;
+    try {
+      await api.postAIAction(targetId, 'edit', editText);
+      setRecs((rs) =>
+        rs.map((r) =>
+          r.id === recId
+            ? { ...r, status: 'edited' as AIStatus, suggested_correction: editText }
+            : r,
+        ),
+      );
+      setEditing(null);
+      if (loanId) {
+        const refreshedLoan = await api.getLoan(loanId);
+        if (refreshedLoan) setLoan(refreshedLoan);
+        const refreshedExs = await api.getExceptions();
+        setExceptions(refreshedExs.filter((e) => e.loan_id === loanId));
+      }
+    } catch (err: any) {
+      alert(`Edit error: ${err?.message || 'Failed to save edit.'}`);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const requestAI = async () => {
@@ -496,7 +512,6 @@ export function LoanDetail() {
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      switchRole('consumer');
                       nav(`/consumer/verified/${loan.loan_id}`);
                     }}
                   >
@@ -751,7 +766,6 @@ export function LoanDetail() {
                   variant="primary"
                   className="w-full"
                   onClick={() => {
-                    switchRole('consumer');
                     nav(`/consumer/verified/${loan.loan_id}`);
                   }}
                 >
