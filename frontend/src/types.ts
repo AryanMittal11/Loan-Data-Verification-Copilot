@@ -166,11 +166,6 @@ export interface ReviewerDashboard {
 export interface ConsumerDashboard {
   verified_count: number;
   data_quality_score: number;
-  quality_breakdown?: {
-    completeness: number;
-    accuracy: number;
-    verification: number;
-  };
   verification_history: { loan_id: string; verified_at: string; verified_by: string }[];
 }
 

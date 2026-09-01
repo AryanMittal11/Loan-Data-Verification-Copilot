@@ -86,48 +86,6 @@ export function ConsumerDashboard() {
       <div className="px-6 lg:px-10 py-8 space-y-8">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-warmink/12 border border-warmink/12">
           <Stat label="Verified records" value={verifiedList.length} tone="verified" />
-          <div className="px-5 py-4 bg-parchment-lighter">
-            <div className="text-2xs uppercase tracking-wide text-warmink-mute font-medium">
-              Data-quality score
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="font-slab text-2xl text-verified tnum font-semibold">
-                {d.data_quality_score.toFixed(1)}
-              </span>
-              <span className="text-sm text-warmink-mute">/ 100</span>
-            </div>
-            <div className="mt-2 h-1.5 bg-warmink/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-verified transition-all rounded-full"
-                style={{ width: `${d.data_quality_score}%` }}
-              />
-            </div>
-            {d.quality_breakdown && (
-              <div className="mt-3 space-y-1.5">
-                {([
-                  { label: 'Completeness', value: d.quality_breakdown.completeness, weight: '40%', color: 'bg-emerald-500' },
-                  { label: 'Accuracy', value: d.quality_breakdown.accuracy, weight: '35%', color: 'bg-sky-500' },
-                  { label: 'Verification', value: d.quality_breakdown.verification, weight: '25%', color: 'bg-amber-500' },
-                ] as const).map((dim) => (
-                  <div key={dim.label} className="flex items-center gap-2">
-                    <span className="text-2xs text-warmink-mute w-[80px] shrink-0">
-                      {dim.label}
-                      <span className="text-warmink-mute/50 ml-0.5">({dim.weight})</span>
-                    </span>
-                    <div className="flex-1 h-1 bg-warmink/10 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${dim.color} transition-all rounded-full`}
-                        style={{ width: `${dim.value}%` }}
-                      />
-                    </div>
-                    <span className="text-2xs font-mono tnum text-warmink-mute w-[38px] text-right">
-                      {dim.value.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
           <Stat
             label="Verified coverage"
             value={`${verifiedList.length > 0 ? ((verifiedList.length / Math.max(1, verifiedList.length)) * 100).toFixed(1) : '0.0'}%`}
@@ -151,10 +109,10 @@ export function ConsumerDashboard() {
               {(d.verification_history.length > 0
                 ? d.verification_history
                 : verifiedList.slice(0, 6).map((v) => ({
-                    loan_id: v.loan_id,
-                    verified_by: v.verified_by,
-                    verified_at: v.verified_at,
-                  }))
+                  loan_id: v.loan_id,
+                  verified_by: v.verified_by,
+                  verified_at: v.verified_at,
+                }))
               ).map((h, i) => (
                 <li
                   key={i}
