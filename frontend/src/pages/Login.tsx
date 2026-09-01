@@ -197,12 +197,9 @@ export function Login() {
                   <h1 className="font-slab text-xl md:text-2xl font-semibold text-warmink tracking-tight">
                     Loan Verification Copilot
                   </h1>
-                  <span className="hidden sm:inline-flex px-2 py-0.5 text-2xs uppercase tracking-wider font-mono border border-verified/30 text-verified bg-verified/5">
-                    RBAC Authentication Portal
-                  </span>
                 </div>
                 <p className="text-xs text-warmink-mute mt-0.5">
-                  Secure Access Gateway — Authenticated Database Accounts Only
+                  Secure Access Gateway
                 </p>
               </div>
             </div>
@@ -239,7 +236,7 @@ export function Login() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="font-slab text-lg font-semibold text-warmink">
-                  1. Select Target Role Portal
+                  Select Target Role Portal
                 </h2>
                 <p className="text-xs text-warmink-mute">
                   Authentication requires a database-verified account matching the target role permissions.
@@ -521,9 +518,6 @@ export function Login() {
                     <div className="p-2.5 bg-parchment border border-warmink/12 text-2xs text-warmink-soft">
                       <span>Assigned Account Role: </span>
                       <strong className="text-warmink font-mono uppercase">{activeConfig.title}</strong>
-                      <span className="block mt-0.5 text-warmink-mute">
-                        Your account will be created directly in the PostgreSQL database with bcrypt password hashing.
-                      </span>
                     </div>
 
                     <button
@@ -603,7 +597,7 @@ export function Login() {
 
         {/* Footer */}
         <footer className="mt-auto px-6 lg:px-12 py-4 border-t border-warmink/12 text-2xs text-warmink-mute flex flex-wrap items-center justify-between gap-2 bg-parchment">
-          <span>Loan Data Verification Copilot — Production Database RBAC Console</span>
+          <span>Loan Data Verification Copilot</span>
           <span>SHA-256 Tamper Evident Verification Ledger</span>
         </footer>
       </div>
