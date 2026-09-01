@@ -82,11 +82,6 @@ export class VerifiedRecordsService {
     if (existing) {
       return serializeVerifiedRecord(existing);
     }
-
-    const loan = await this.prisma.loanRecord.findUnique({ where: { loanId } });
-    if (loan) {
-      return this.createVerifiedRecord(loanId, 'user-reviewer-1');
-    }
     throw new NotFoundException(`Verified record for loan ${loanId} not found.`);
   }
 

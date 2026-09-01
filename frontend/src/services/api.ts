@@ -119,20 +119,34 @@ export const api = {
     });
   },
 
-  postAIAction: async (id: string, action: 'accept' | 'reject' | 'edit', edited?: string) => {
+  postAIAction: async (
+    exceptionId: string,
+    action: 'accept' | 'reject' | 'edit',
+    edited?: string,
+    aiRecommendationId?: string,
+    field?: string,
+  ) => {
     if (action === 'accept') {
-      return request(`/exceptions/${id}/accept`, { method: 'POST' });
-    } else if (action === 'reject') {
-      return request(`/exceptions/${id}/reject`, { method: 'POST' });
-    } else {
-      return request(`/exceptions/${id}/edit`, {
+      return request(`/exceptions/${exceptionId}/accept`, {
         method: 'POST',
-        body: JSON.stringify({ field: 'interest_rate', value: edited }),
+        body: JSON.stringify({
+          ai_recommendation_id: aiRecommendationId || undefined,
+        }),
+      });
+    } else if (action === 'reject') {
+      return request(`/exceptions/${exceptionId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ comment: 'Dismissed by reviewer' }),
+      });
+    } else {
+      return request(`/exceptions/${exceptionId}/edit`, {
+        method: 'POST',
+        body: JSON.stringify({ field: field || 'interest_rate', value: edited }),
       });
     }
   },
 
-  requestAIRec: async (loanId: string, exceptionId: string): Promise<AIRecommendation> => {
+  requestAIRec: async (_loanId: string, exceptionId: string): Promise<AIRecommendation> => {
     return request<AIRecommendation>(`/exceptions/${exceptionId}/ai/explain`, {
       method: 'POST',
     });
@@ -171,9 +185,10 @@ export const api = {
     return request(`/ai/rules/${ruleId}/reject`, { method: 'POST' });
   },
 
+  // Approve loan → creates VerifiedRecord, then fetch it
   verifyRecord: async (
     loanId: string,
-    actor: string,
+    _actor: string,
     decision: Exclude<ReviewerDecision, null>,
     _aiRef?: string | null,
   ) => {
@@ -182,6 +197,14 @@ export const api = {
       body: JSON.stringify({ decision }),
     });
     return request<VerifiedRecord>(`/verified-loans/${loanId}`);
+  },
+
+  // Reject loan — does NOT try to fetch verified record (none will exist)
+  rejectLoan: async (loanId: string) => {
+    return request(`/loans/${loanId}/decision`, {
+      method: 'POST',
+      body: JSON.stringify({ decision: 'rejected' }),
+    });
   },
 
   addComment: async (loanId: string, author: string, text: string) => {

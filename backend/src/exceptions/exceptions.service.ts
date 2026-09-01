@@ -7,12 +7,14 @@ import {
   serializeAIRecommendation,
 } from '../common/serializers';
 import { ValidationService } from '../validation/validation.service';
+import { VerifiedRecordsService } from '../verified-records/verified-records.service';
 
 @Injectable()
 export class ExceptionsService {
   constructor(
     private prisma: PrismaService,
     private validationService: ValidationService,
+    private verifiedRecordsService: VerifiedRecordsService,
   ) {}
 
   async getQueue(filters?: { status?: string; severity?: string; ruleType?: string; search?: string }) {
@@ -96,7 +98,7 @@ export class ExceptionsService {
       targetRec = ex.recommendations[ex.recommendations.length - 1];
     }
 
-    // Apply correction to loan canonical record
+    // Apply correction ONLY to the target field of this exception
     await this.applyCorrectionToLoan(ex.loanId, ex.field, ex.ruleType, targetRec?.suggestedCorrection);
 
     if (targetRec) {
@@ -120,7 +122,7 @@ export class ExceptionsService {
       },
     });
 
-    // Re-run validation to resolve exception
+    // Re-run validation to update exception statuses
     await this.validationService.runValidation();
 
     return { ok: true, message: `Exception ${id} accepted and canonical data updated.` };
@@ -198,40 +200,83 @@ export class ExceptionsService {
     const loan = await this.prisma.loanRecord.findUnique({ where: { loanId } });
     if (!loan) throw new NotFoundException(`Loan ${loanId} not found.`);
 
-    await this.prisma.loanRecord.update({
-      where: { loanId },
-      data: { status: decision },
-    });
+    if (decision === 'approved') {
+      const openExceptions = await this.prisma.exception.findMany({
+        where: { loanId, status: ExceptionStatus.open },
+      });
+      if (openExceptions.length > 0) {
+        throw new BadRequestException(
+          `Cannot approve loan ${loanId}: ${openExceptions.length} open exception(s) remain unresolved. Please resolve or reject exceptions first.`,
+        );
+      }
 
-    return { ok: true, loan_id: loanId, decision };
+      await this.prisma.loanRecord.update({
+        where: { loanId },
+        data: { status: 'approved' },
+      });
+
+      // Create VerifiedRecord ONLY when loan decision is explicitly approved by Reviewer!
+      const verified = await this.verifiedRecordsService.createVerifiedRecord(loanId, actor);
+      return { ok: true, loan_id: loanId, decision: 'approved', verified_record: verified };
+    } else {
+      await this.prisma.loanRecord.update({
+        where: { loanId },
+        data: { status: 'rejected' },
+      });
+      return { ok: true, loan_id: loanId, decision: 'rejected' };
+    }
   }
 
   private async applyCorrectionToLoan(loanId: string, field: string | null, ruleType?: string, textVal?: string) {
+    if (!textVal) return;
     const updateData: any = {};
-    const cleanText = textVal ? textVal.trim() : '';
+    const cleanText = textVal.trim();
+    const targetField = field ? field.trim().toLowerCase() : null;
 
-    if (field === 'interest_rate' || ruleType === 'NUMERIC_RANGE' || cleanText.includes('%')) {
+    if (targetField === 'interest_rate' || targetField === 'interestrate') {
       const num = parseFloat(cleanText.replace(/[^0-9.]/g, ''));
-      if (!isNaN(num)) {
-        updateData.interestRate = num > 1 ? num / 100 : num;
-      } else {
-        updateData.interestRate = 0.0625;
-      }
-    } else if (field === 'current_balance' || cleanText.includes('$')) {
+      if (!isNaN(num)) updateData.interestRate = num > 1 ? num / 100 : num;
+    } else if (targetField === 'current_balance' || targetField === 'currentbalance') {
       const num = parseFloat(cleanText.replace(/[^0-9.]/g, ''));
-      if (!isNaN(num)) {
-        updateData.currentBalance = num;
+      if (!isNaN(num)) updateData.currentBalance = num;
+    } else if (targetField === 'original_principal' || targetField === 'originalprincipal') {
+      const num = parseFloat(cleanText.replace(/[^0-9.]/g, ''));
+      if (!isNaN(num)) updateData.originalPrincipal = num;
+    } else if (targetField === 'term_months' || targetField === 'termmonths') {
+      const num = parseInt(cleanText.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(num)) updateData.termMonths = num;
+    } else if (targetField === 'days_past_due' || targetField === 'dayspastdue') {
+      const num = parseInt(cleanText.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(num)) updateData.daysPastDue = num;
+    } else if (targetField === 'document_status' || targetField === 'documentstatus') {
+      updateData.documentStatus = cleanText;
+    } else if (targetField === 'payment_status' || targetField === 'paymentstatus') {
+      updateData.paymentStatus = cleanText;
+    } else if (targetField === 'servicer_name' || targetField === 'servicername') {
+      updateData.servicerName = cleanText;
+    } else if (targetField === 'borrower_state' || targetField === 'borrowerstate') {
+      updateData.borrowerState = cleanText.slice(0, 2).toUpperCase();
+    } else if (targetField === 'origination_date' || targetField === 'originationdate') {
+      updateData.originationDate = cleanText;
+    } else if (targetField === 'maturity_date' || targetField === 'maturitydate') {
+      updateData.maturityDate = cleanText;
+    } else if (targetField === 'loan_type' || targetField === 'loantype') {
+      updateData.loanType = cleanText;
+    } else if (targetField === 'borrower_id' || targetField === 'borrowerid') {
+      updateData.borrowerId = cleanText;
+    } else {
+      // Rule-type specific target field fallbacks if field is omitted
+      if (ruleType === 'NUMERIC_RANGE' || ruleType === 'RATE_IN_RANGE') {
+        const num = parseFloat(cleanText.replace(/[^0-9.]/g, ''));
+        if (!isNaN(num)) updateData.interestRate = num > 1 ? num / 100 : num;
+      } else if (ruleType === 'DOCUMENT_STATUS') {
+        updateData.documentStatus = 'Complete';
+      } else if (ruleType === 'STATUS_CONSISTENCY' || ruleType === 'DPD_STATUS_MATCH') {
+        if (cleanText.toLowerCase().includes('current')) {
+          updateData.paymentStatus = 'Current';
+          updateData.daysPastDue = 0;
+        }
       }
-    } else if (field === 'document_status' || ruleType === 'DOCUMENT_STATUS' || cleanText.includes('Complete')) {
-      updateData.documentStatus = 'Complete';
-    } else if (field === 'servicer_name') {
-      updateData.servicerName = cleanText || 'Cascade Servicing';
-    } else if (field === 'borrower_state') {
-      updateData.borrowerState = cleanText.slice(0, 2).toUpperCase() || 'CA';
-    } else if (field === 'origination_date') {
-      updateData.originationDate = cleanText || '2024-01-01';
-    } else if (field === 'maturity_date' || ruleType === 'DATE_FORMAT_LOGIC') {
-      updateData.maturityDate = cleanText || '2054-01-01';
     }
 
     if (Object.keys(updateData).length > 0) {

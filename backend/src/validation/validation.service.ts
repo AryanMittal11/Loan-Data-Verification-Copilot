@@ -104,7 +104,7 @@ export class ValidationService implements OnModuleInit {
       }
     }
 
-    // Persist new exceptions while preserving historical decisions
+    // 1. Create newly detected open exceptions
     for (const ex of newExceptions) {
       const existing = await this.prisma.exception.findFirst({
         where: {
@@ -118,6 +118,26 @@ export class ValidationService implements OnModuleInit {
       if (!existing) {
         await this.prisma.exception.create({
           data: ex,
+        });
+      }
+    }
+
+    // 2. Auto-resolve existing open exceptions if rule validation now passes after correction
+    const openDbExceptions = await this.prisma.exception.findMany({
+      where: { status: ExceptionStatus.open },
+    });
+
+    for (const openEx of openDbExceptions) {
+      const stillFails = newExceptions.some(
+        (newEx) =>
+          newEx.loanId === openEx.loanId &&
+          newEx.ruleType === openEx.ruleType &&
+          (newEx.field === openEx.field || (!newEx.field && !openEx.field)),
+      );
+      if (!stillFails) {
+        await this.prisma.exception.update({
+          where: { id: openEx.id },
+          data: { status: ExceptionStatus.approved },
         });
       }
     }

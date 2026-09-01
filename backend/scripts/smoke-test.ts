@@ -116,8 +116,25 @@ async function runSmokeTest() {
     },
     body: JSON.stringify({}),
   });
-  const revalData = await revalRes.json();
+  await revalRes.json();
   console.log('  ✅ Re-validation completed.');
+
+  // Clear remaining open exceptions for this target loan before approving decision
+  const remainingExRes = await fetch(`${BASE_URL}/exceptions`, {
+    headers: { Authorization: `Bearer ${reviewerToken}` },
+  });
+  const allExs = await remainingExRes.json();
+  const openForLoan = allExs.filter((e: any) => e.loan_id === targetEx.loan_id && e.status === 'open');
+  for (const oex of openForLoan) {
+    await fetch(`${BASE_URL}/exceptions/${oex.id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${reviewerToken}`,
+      },
+      body: JSON.stringify({ comment: 'Closed in triage' }),
+    });
+  }
 
   // 9. Post Reviewer Decision
   console.log(`Step 9: Approving loan decision for ${targetEx.loan_id}...`);
@@ -129,7 +146,10 @@ async function runSmokeTest() {
     },
     body: JSON.stringify({ decision: 'approved' }),
   });
-  if (!decRes.ok) throw new Error(`Loan decision failed: ${decRes.status}`);
+  if (!decRes.ok) {
+    const errJson = await decRes.json().catch(() => ({}));
+    throw new Error(`Loan decision failed (${decRes.status}): ${errJson.message || decRes.statusText}`);
+  }
   console.log('  ✅ Loan decision posted: approved');
 
   // 10. Fetch Verified Loan & Hash
