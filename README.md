@@ -38,7 +38,6 @@
 - [Validation Rules Engine](#-validation-rules-engine)
 - [Role-Based Access](#-role-based-access)
 - [AI-Powered Features](#-ai-powered-features)
-- [Screenshots](#-screenshots)
 - [Testing](#-testing)
 - [Contributing](#-contributing)
 - [License](#-license)
