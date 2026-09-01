@@ -1,0 +1,23 @@
+[
+  {
+    "name": "operator",
+    "email": "operator@example.com",
+    "role": "operator",
+    "password": "demo-password",
+    "organization": "Data Ingestion Dept"
+  },
+  {
+    "name": "reviewer",
+    "email": "reviewer@example.com",
+    "role": "reviewer",
+    "password": "demo-password",
+    "organization": "Quality Assurance Team"
+  },
+  {
+    "name": "consumer",
+    "email": "consumer@example.com",
+    "role": "consumer",
+    "password": "demo-password",
+    "organization": "Capital Markets Analytics"
+  }
+]

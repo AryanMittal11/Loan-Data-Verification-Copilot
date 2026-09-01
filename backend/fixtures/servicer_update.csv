@@ -1,0 +1,5 @@
+loan_id,current_balance,payment_status,days_past_due,servicer_name,last_payment_date
+LN-1001,183500,Current,0,Servicer A,2026-08-01
+LN-1002,345000,Current,0,Servicer B,2026-08-01
+LN-1003,410000,Current,0,Servicer A,2026-08-01
+LN-1009,365000,Current,0,Servicer C,2026-08-01

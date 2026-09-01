@@ -1,0 +1,16 @@
+loan_id,borrower_id,loan_type,origination_date,maturity_date,original_principal,current_balance,interest_rate,term_months,borrower_state,payment_status,days_past_due,servicer_name,document_status,source_system
+LN-1001,BR-201,Conventional,2025-01-15,2030-01-15,250000,183500,0.079,60,CA,Current,0,Servicer A,Complete,loan_tape
+LN-1002,BR-202,FHA,2024-06-10,2054-06-10,350000,380000,0.065,360,TX,Current,0,Servicer B,Complete,loan_tape
+LN-1003,BR-203,VA,2023-11-20,2053-11-20,420000,410000,0.450,360,NY,Current,0,Servicer A,Pending Review,loan_tape
+LN-1004,BR-204,Conventional,2022-03-01,2020-03-01,180000,165000,0.045,360,FL,Current,0,Servicer C,Complete,loan_tape
+LN-1005,BR-205,Jumbo,2024-01-10,2054-01-10,850000,820000,0.071,360,ZZ,Current,0,Servicer A,Complete,loan_tape
+LN-1006,BR-206,Conventional,2023-08-15,2053-08-15,310000,295000,0.058,360,IL,Current,65,Servicer B,Complete,loan_tape
+LN-1007,BR-207,FHA,2024-02-01,2054-02-01,220000,210000,0.062,360,GA,Paid Off,15000,Servicer A,Complete,loan_tape
+LN-1008,BR-208,Conventional,2023-05-12,2053-05-12,290000,275000,0.055,360,NC,Current,0,Servicer B,Missing,loan_tape
+LN-1009,BR-209,VA,2024-04-18,2054-04-18,380000,365000,0.068,360,OH,Current,0,Servicer C,Complete,loan_tape
+LN-1010,BR-210,Conventional,2023-09-30,2053-09-30,400000,385000,0.060,360,PA,Current,0,Servicer A,Complete,loan_tape
+LN-1002,BR-211,Conventional,2024-07-01,2054-07-01,300000,290000,0.065,360,WA,Current,0,Servicer B,Complete,loan_tape
+LN-1012,BR-212,Conventional,2023-12-01,2053-12-01,275000,260000,0.057,360,CO,Current,0,Servicer A,Complete,loan_tape
+LN-1013,BR-213,FHA,2024-05-15,2054-05-15,330000,318000,0.064,360,AZ,Current,0,Servicer C,Complete,loan_tape
+LN-1014,BR-214,Jumbo,2023-10-10,2053-10-10,920000,890000,0.072,360,MA,Current,0,Servicer A,Complete,loan_tape
+LN-1015,BR-215,Conventional,2024-03-25,2054-03-25,240000,230000,0.061,360,MI,Current,0,Servicer B,Complete,loan_tape

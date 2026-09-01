@@ -17,7 +17,11 @@ export function VerifiedRecords() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setRecords(await api.getVerifiedLoans());
+    try {
+      setRecords(await api.getVerifiedLoans());
+    } catch {
+      setRecords([]);
+    }
     setLoading(false);
   }, []);
 
@@ -32,6 +36,15 @@ export function VerifiedRecords() {
       r.loan_id.toLowerCase().includes(search.toLowerCase()) ||
       r.canonical_data.borrower_id.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const handleExport = async () => {
+    try {
+      await api.exportVerifiedLoans();
+      exportAllVerifiedLoansCsv(list);
+    } catch {
+      exportAllVerifiedLoansCsv(list);
+    }
+  };
 
   return (
     <div>
@@ -50,7 +63,7 @@ export function VerifiedRecords() {
         right={
           <Button
             variant="secondary"
-            onClick={() => exportAllVerifiedLoansCsv(list)}
+            onClick={handleExport}
             disabled={list.length === 0}
           >
             <Download className="w-4 h-4" strokeWidth={1.75} />
@@ -105,7 +118,7 @@ export function VerifiedRecords() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((v) => (
+                  {filtered.map((v: VerifiedRecord) => (
                     <tr
                       key={v.loan_id}
                       onClick={() => nav(`/consumer/verified/${v.loan_id}`)}
@@ -130,7 +143,7 @@ export function VerifiedRecords() {
                         {fmtMoney(v.canonical_data.current_balance)}
                       </td>
                       <td className="px-3 py-3 font-mono tnum text-warmink-soft">
-                        {v.canonical_data.interest_rate.toFixed(3)}%
+                        {v.canonical_data.interest_rate ? (v.canonical_data.interest_rate > 1 ? v.canonical_data.interest_rate : v.canonical_data.interest_rate * 100).toFixed(3) : '0.000'}%
                       </td>
                       <td className="px-3 py-3 text-warmink-soft">
                         {v.canonical_data.borrower_state}
