@@ -91,20 +91,25 @@ export function LoanDetail() {
   const load = useCallback(async () => {
     if (!loanId) return;
     setLoading(true);
-    const [l, exs, allRecs, aud, v] = await Promise.all([
-      api.getLoan(loanId),
-      api.getExceptions(),
-      api.getRecommendations(),
-      api.getAudit(loanId),
-      api.getVerifiedLoan(loanId),
-    ]);
-    setLoan(l);
-    const matchedExs = exs.filter((e) => e.loan_id === loanId);
-    setExceptions(matchedExs);
-    setRecs(allRecs.filter((r) => matchedExs.some((e) => e.id === r.exception_id)));
-    setAudit(aud);
-    setVerified(v);
-    setLoading(false);
+    try {
+      const [l, exs, allRecs, aud, v] = await Promise.all([
+        api.getLoan(loanId).catch(() => null),
+        api.getExceptions().catch(() => []),
+        api.getRecommendations().catch(() => []),
+        api.getAudit(loanId).catch(() => []),
+        api.getVerifiedLoan(loanId).catch(() => null),
+      ]);
+      setLoan(l);
+      const matchedExs = (exs || []).filter((e) => e.loan_id === loanId);
+      setExceptions(matchedExs);
+      setRecs((allRecs || []).filter((r) => matchedExs.some((e) => e.id === r.exception_id)));
+      setAudit(aud || []);
+      setVerified(v);
+    } catch (err) {
+      console.error('Error loading loan details:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [loanId]);
 
   useEffect(() => {

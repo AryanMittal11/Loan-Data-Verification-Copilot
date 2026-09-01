@@ -6,9 +6,21 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding Loan Data Verification Copilot database default users and rules...');
+  console.log('🧹 Clearing all loan records, raw lineage, exceptions, recommendations, verified records, and audit events...');
 
-  // 1. Seed Default Role Users
+  // Delete all operational data
+  await prisma.reviewAction.deleteMany({});
+  await prisma.aIRecommendation.deleteMany({});
+  await prisma.exception.deleteMany({});
+  await prisma.verifiedRecord.deleteMany({});
+  await prisma.loanRecordRaw.deleteMany({});
+  await prisma.loanRecord.deleteMany({});
+  await prisma.sourceFile.deleteMany({});
+  await prisma.auditEvent.deleteMany({});
+
+  console.log('✅ Operational data cleared cleanly.');
+
+  // Seed default users if not present
   const usersPath = path.join(__dirname, '..', 'fixtures', 'users.json');
   if (fs.existsSync(usersPath)) {
     const usersData = JSON.parse(fs.readFileSync(usersPath, 'utf-8'));
@@ -31,10 +43,10 @@ async function main() {
         },
       });
     }
-    console.log('✅ Users seeded: operator@example.com, reviewer@example.com, consumer@example.com');
+    console.log('✅ Default role users ensured in database (operator@example.com, reviewer@example.com, consumer@example.com)');
   }
 
-  // 2. Seed Validation Rules
+  // Seed validation rules
   const rulesPath = path.join(__dirname, '..', 'config', 'validation_rules.json');
   if (fs.existsSync(rulesPath)) {
     const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf-8'));
@@ -60,15 +72,15 @@ async function main() {
         },
       });
     }
-    console.log('✅ 10 Validation rules configured');
+    console.log('✅ 10 Validation rules configured and ready for execution.');
   }
 
-  console.log('🚀 Default users and validation rules ready!');
+  console.log('✨ Database is now fresh and ready for user uploads!');
 }
 
 main()
   .catch((e) => {
-    console.error('Seeding error:', e);
+    console.error('Reset error:', e);
     process.exit(1);
   })
   .finally(async () => {

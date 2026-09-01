@@ -5,12 +5,18 @@ import { TopBar, PageHeader } from '@/components/TopBar';
 import { Card, CardHeader, Stat, Pill, Button } from '@/components/ui';
 import { fmtDateTime } from '@/utils/format';
 import type { ReviewerDashboard as ReviewerDashType } from '@/types';
-import { Sparkles, ListChecks, Clock, ArrowRight, AlertOctagon } from 'lucide-react';
+import { Sparkles, ListChecks, Clock, ArrowRight, AlertOctagon, PlusCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 export function ReviewerDashboard() {
   const nav = useNavigate();
   const [data, setData] = useState<ReviewerDashType | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // AI Rule Generation State
+  const [rulePrompt, setRulePrompt] = useState('');
+  const [generatingRule, setGeneratingRule] = useState(false);
+  const [ruleDraft, setRuleDraft] = useState<any | null>(null);
+  const [ruleMsg, setRuleMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -25,6 +31,43 @@ export function ReviewerDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleGenerateRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rulePrompt.trim()) return;
+    setGeneratingRule(true);
+    setRuleMsg(null);
+    try {
+      const res: any = await api.requestAIRuleGeneration(rulePrompt.trim());
+      setRuleDraft(res.rule || res);
+      setRuleMsg('AI generated new rule logic! Review and approve below.');
+    } catch (err: any) {
+      setRuleMsg(`Error generating rule: ${err?.message || 'AI request failed'}`);
+    } finally {
+      setGeneratingRule(false);
+    }
+  };
+
+  const handleApproveRule = async (ruleId: string) => {
+    try {
+      await api.approveAIRuleDraft(ruleId);
+      setRuleMsg('Rule approved & activated in engine!');
+      setRuleDraft(null);
+      setRulePrompt('');
+    } catch (err: any) {
+      setRuleMsg(`Error approving rule: ${err?.message}`);
+    }
+  };
+
+  const handleRejectRule = async (ruleId: string) => {
+    try {
+      await api.rejectAIRuleDraft(ruleId);
+      setRuleMsg('Rule proposal rejected.');
+      setRuleDraft(null);
+    } catch (err: any) {
+      setRuleMsg(`Error rejecting rule: ${err?.message}`);
+    }
+  };
 
   if (loading && !data) {
     return (
@@ -113,6 +156,59 @@ export function ReviewerDashboard() {
             </div>
           </Card>
         </div>
+
+        {/* AI Rule Creation & Proposal Section */}
+        <Card>
+          <CardHeader
+            title="AI Natural Language Rule Generator"
+            subtitle="Describe a custom validation logic in natural language — Gemini will generate the JSON rule configuration."
+            right={<Sparkles className="w-4 h-4 text-amber-600" strokeWidth={1.75} />}
+          />
+          <div className="p-5">
+            <form onSubmit={handleGenerateRule} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={rulePrompt}
+                onChange={(e) => setRulePrompt(e.target.value)}
+                placeholder="e.g. Flag any loan where interest rate exceeds 12% or original principal is above 2M"
+                className="flex-1 px-3.5 py-2 text-sm bg-parchment-light border border-warmink/20 focus:border-ink/40 outline-none font-sans"
+              />
+              <Button variant="primary" type="submit" disabled={generatingRule}>
+                <PlusCircle className="w-4 h-4" />
+                {generatingRule ? 'Generating Rule…' : 'Generate Rule'}
+              </Button>
+            </form>
+
+            {ruleMsg && (
+              <p className="mt-3 text-xs text-warmink font-mono bg-parchment p-2 border border-warmink/15">
+                {ruleMsg}
+              </p>
+            )}
+
+            {ruleDraft && (
+              <div className="mt-4 p-4 bg-parchment-lighter border border-warmink/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-mono text-xs text-warmink font-bold">{ruleDraft.code || 'CUSTOM_RULE'}</span>
+                    <span className="ml-2 text-xs text-warmink-soft font-medium">{ruleDraft.name}</span>
+                  </div>
+                  <Pill tone="pending">{ruleDraft.severity || 'medium'}</Pill>
+                </div>
+                <pre className="text-2xs font-mono bg-paper p-3 border border-warmink/15 overflow-x-auto text-warmink">
+                  {JSON.stringify(ruleDraft.config || ruleDraft, null, 2)}
+                </pre>
+                <div className="flex gap-2">
+                  <Button variant="verified" onClick={() => handleApproveRule(ruleDraft.id)}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Activate Rule
+                  </Button>
+                  <Button variant="danger" onClick={() => handleRejectRule(ruleDraft.id)}>
+                    <XCircle className="w-3.5 h-3.5" /> Reject Proposal
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
 
         <Card>
           <CardHeader

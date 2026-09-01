@@ -5,8 +5,8 @@ import { useApp } from '@/appContext';
 import { TopBar, PageHeader } from '@/components/TopBar';
 import { Card, CardHeader, Stat, Pill, Button, EmptyState } from '@/components/ui';
 import { fmtDateTime } from '@/utils/format';
-import { SAMPLE_TAPES, downloadCsv } from '@/utils/csv';
-import type { ImportEvent, OperatorDashboard as OpDashType } from '@/types';
+import { SAMPLE_TAPES } from '@/utils/csv';
+import type { ImportEvent, OperatorDashboard as OpDashType, SourceSystem } from '@/types';
 
 import {
   UploadCloud,
@@ -15,9 +15,6 @@ import {
   CheckCircle2,
   FileWarning,
   Upload,
-  Download,
-  FileSpreadsheet,
-  ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
@@ -30,6 +27,7 @@ export function OperatorDashboard() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [parseResult, setParseResult] = useState<ImportEvent | null>(null);
+  const [sourceSystem, setSourceSystem] = useState<SourceSystem>('Encompass');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -54,11 +52,19 @@ export function OperatorDashboard() {
 
   const handleFile = useCallback(
     async (file: File) => {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Invalid file format. Please upload a valid CSV file (.csv).');
+        return;
+      }
       setUploading(true);
       setParseResult(null);
       try {
         const text = await file.text();
-        const ev = await api.importCsvTape(file.name, 'Encompass', text, actor);
+        if (!text.trim()) {
+          alert('The uploaded file is empty. Please select a CSV file with loan records.');
+          return;
+        }
+        const ev = await api.importCsvTape(file.name, sourceSystem, text, actor);
         setParseResult(ev);
         await load();
       } catch (err: any) {
@@ -67,14 +73,14 @@ export function OperatorDashboard() {
         setUploading(false);
       }
     },
-    [actor, load],
+    [actor, sourceSystem, load],
   );
 
   const loadSampleTape = async (type: 'clean' | 'flagged') => {
     setUploading(true);
     try {
       const sample = SAMPLE_TAPES[type];
-      const ev = await api.importCsvTape(sample.filename, 'Encompass', sample.content, actor);
+      const ev = await api.importCsvTape(sample.filename, sourceSystem, sample.content, actor);
       setParseResult(ev);
       await load();
     } catch (err: any) {
@@ -140,6 +146,22 @@ export function OperatorDashboard() {
             <CardHeader
               title="Ingest loan tape"
               subtitle="Upload CSV exports from Encompass, Byte, Calyx, or servicer updates."
+              right={
+                <div className="flex items-center gap-2">
+                  <span className="text-2xs font-mono text-warmink-mute uppercase">System:</span>
+                  <select
+                    value={sourceSystem}
+                    onChange={(e) => setSourceSystem(e.target.value as SourceSystem)}
+                    className="text-2xs font-mono bg-parchment-light border border-warmink/20 px-2 py-1 focus:border-ink/40 outline-none"
+                  >
+                    <option value="Encompass">Encompass LOS</option>
+                    <option value="Byte">Byte LOS</option>
+                    <option value="Calyx">Calyx LOS</option>
+                    <option value="Cascade Servicing">Servicer Update (Cascade)</option>
+                    <option value="Document Manifest">Document Manifest</option>
+                  </select>
+                </div>
+              }
             />
             <div className="p-5">
               <input
@@ -235,7 +257,7 @@ export function OperatorDashboard() {
                     </div>
                   </div>
                   {parseResult.failed_rows && parseResult.failed_rows.length > 0 && (
-                    <div className="p-2 bg-red-50 border border-red-200 text-2xs text-red-800 space-y-1">
+                    <div className="p-2 bg-red-50 border border-red-200 text-2xs text-red-800 space-y-1 max-h-32 overflow-y-auto">
                       <div className="font-semibold flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-red-600" /> Failed Rows:
                       </div>
