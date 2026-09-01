@@ -9,14 +9,17 @@ import { Search, ListChecks, Filter, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 const ruleTypes: RuleType[] = [
-  'date_order',
-  'balance_under_principal',
-  'rate_in_range',
-  'term_consistent',
-  'document_complete',
-  'dpd_status_match',
-  'servicer_present',
-];
+  'REQUIRED_FIELDS',
+  'DATE_FORMAT_LOGIC',
+  'NUMERIC_RANGE',
+  'ENUM_LOOKUP',
+  'DUPLICATE_LOAN_ID',
+  'DUPLICATE_BORROWER_SIGNATURE',
+  'CROSS_FILE_CONFLICT',
+  'STALE_RECORD',
+  'STATUS_CONSISTENCY',
+  'DOCUMENT_STATUS',
+] as any;
 
 const severityTone: Record<ExceptionSeverity, 'exception' | 'pending' | 'neutral'> = {
   high: 'exception',
@@ -34,7 +37,11 @@ export function ExceptionQueue() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setExceptions(await api.getExceptions());
+    try {
+      setExceptions(await api.getExceptions());
+    } catch {
+      setExceptions([]);
+    }
     setLoading(false);
   }, []);
 
@@ -91,7 +98,7 @@ export function ExceptionQueue() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by loan ID (e.g. LN-100202) or exception ID"
+                placeholder="Search by loan ID (e.g. LN-1002) or exception ID"
                 className="w-full pl-9 pr-3 py-2 text-sm bg-parchment-light border border-warmink/20 focus:border-ink/40 outline-none"
               />
             </div>
@@ -178,7 +185,7 @@ export function ExceptionQueue() {
                         {e.rule_type.replace(/_/g, ' ')}
                       </td>
                       <td className="px-3 py-3">
-                        <Pill tone={severityTone[e.severity]}>{e.severity}</Pill>
+                        <Pill tone={severityTone[e.severity] || 'neutral'}>{e.severity}</Pill>
                       </td>
                       <td className="px-3 py-3">
                         <Pill

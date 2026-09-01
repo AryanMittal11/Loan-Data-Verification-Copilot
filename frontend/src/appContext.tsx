@@ -8,19 +8,18 @@ interface AppState {
   actor: string;
   login: (creds: AuthCredentials) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
-  setRole: (r: Role) => void;
-  switchRole: (r: Role) => void;
   signOut: () => void;
 }
 
 const Ctx = createContext<AppState | null>(null);
 
-const STORAGE_KEY = 'loan_verify_user_session';
+const USER_STORAGE_KEY = 'loan_verify_user_session';
+const TOKEN_STORAGE_KEY = 'loan_copilot_token';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(USER_STORAGE_KEY);
       return saved ? (JSON.parse(saved) as User) : null;
     } catch {
       return null;
@@ -30,9 +29,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       if (user) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        if (user.token) {
+          localStorage.setItem(TOKEN_STORAGE_KEY, user.token);
+        }
       } else {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
       }
     } catch {
       // ignore
@@ -51,26 +54,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return registered;
   }, []);
 
-  const setRole = useCallback((r: Role) => {
-    setUser((prev) =>
-      prev
-        ? { ...prev, role: r }
-        : {
-            id: `USR-${Date.now().toString().slice(-4)}`,
-            name: r === 'operator' ? 'Data Operator' : r === 'reviewer' ? 'Reviewer A' : 'Data Consumer',
-            email: `${r}@intain.com`,
-            role: r,
-          },
-    );
-  }, []);
-
-  const switchRole = useCallback((r: Role) => {
-    setRole(r);
-  }, [setRole]);
-
   const signOut = useCallback(() => {
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
   }, []);
 
   return (
@@ -81,8 +68,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         actor: user?.name ?? (user?.role ? `${user.role.toUpperCase()} User` : 'Anonymous'),
         login,
         register,
-        setRole,
-        switchRole,
         signOut,
       }}
     >
@@ -96,4 +81,3 @@ export function useApp(): AppState {
   if (!v) throw new Error('useApp must be used within AppProvider');
   return v;
 }
-

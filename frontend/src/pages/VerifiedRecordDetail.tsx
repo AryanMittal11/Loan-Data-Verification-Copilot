@@ -19,6 +19,8 @@ import {
   Check,
   Copy,
   ArrowLeft,
+  CheckCircle2,
+  Lock,
 } from 'lucide-react';
 
 const fieldLabels: Record<string, string> = {
@@ -39,6 +41,27 @@ const fieldLabels: Record<string, string> = {
   source_system: 'Source system',
 };
 
+function stableStringify(obj: any): string {
+  if (obj === null || typeof obj !== 'object') {
+    return JSON.stringify(obj);
+  }
+  if (Array.isArray(obj)) {
+    return '[' + obj.map((item) => stableStringify(item)).join(',') + ']';
+  }
+  const sortedKeys = Object.keys(obj).sort();
+  const parts = sortedKeys.map(
+    (key) => JSON.stringify(key) + ':' + stableStringify(obj[key]),
+  );
+  return '{' + parts.join(',') + '}';
+}
+
+async function sha256(str: string): Promise<string> {
+  const buf = new TextEncoder().encode(str);
+  const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+  const hashArray = Array.from(new Uint8Array(hashBuf));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function VerifiedRecordDetail() {
   const { loanId } = useParams<{ loanId: string }>();
   const nav = useNavigate();
@@ -47,12 +70,18 @@ export function VerifiedRecordDetail() {
   const [loading, setLoading] = useState(true);
   const [exported, setExported] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [verifyingHash, setVerifyingHash] = useState(false);
+  const [hashVerified, setHashVerified] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     if (!loanId) return;
     setLoading(true);
-    const r = await api.getVerifiedLoan(loanId);
-    setRecord(r);
+    try {
+      const r = await api.getVerifiedLoan(loanId);
+      setRecord(r);
+    } catch {
+      setRecord(null);
+    }
     setLoading(false);
   }, [loanId]);
 
@@ -72,6 +101,25 @@ export function VerifiedRecordDetail() {
     navigator.clipboard?.writeText(record.record_hash);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const testReproducibility = async () => {
+    if (!record) return;
+    setVerifyingHash(true);
+    try {
+      const payload = {
+        ...record.canonical_data,
+        verifier: record.verified_by,
+        timestamp: record.verified_at,
+      };
+      const canonicalJson = stableStringify(payload);
+      const computed = await sha256(canonicalJson);
+      setHashVerified(computed.toLowerCase() === record.record_hash.toLowerCase());
+    } catch {
+      setHashVerified(false);
+    } finally {
+      setVerifyingHash(false);
+    }
   };
 
   if (loading && !record) {
@@ -235,7 +283,7 @@ export function VerifiedRecordDetail() {
           </Card>
         </div>
 
-        {/* Signature moment: The Stamp + Hash card */}
+        {/* Cryptographic Record Hash & Verification Card */}
         <div className="space-y-6">
           <Card surface="parchmentDim" className="border-2 border-warmink/30">
             <CardHeader
@@ -246,7 +294,7 @@ export function VerifiedRecordDetail() {
               <div className="relative py-3">
                 <VerifiedStamp hash={record.record_hash} date={record.verified_at} land />
               </div>
-              <div className="w-full space-y-2">
+              <div className="w-full space-y-3">
                 <div className="flex items-center justify-between text-2xs uppercase tracking-wide text-warmink-mute">
                   <span className="font-semibold">SHA-256 Record Hash</span>
                   <button
@@ -267,7 +315,32 @@ export function VerifiedRecordDetail() {
                 <p className="font-mono text-xs text-warmink break-all leading-relaxed bg-parchment-lighter border border-warmink/20 p-3 select-all">
                   {record.record_hash}
                 </p>
-                <p className="text-2xs text-warmink-mute leading-relaxed">
+
+                {/* Reproducibility Verification Button */}
+                <div className="pt-2">
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={testReproducibility}
+                    disabled={verifyingHash}
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    {verifyingHash ? 'Re-computing SHA-256 Digest…' : 'Verify Hash Reproducibility'}
+                  </Button>
+                </div>
+
+                {hashVerified !== null && (
+                  <div className={`p-3 border text-2xs flex items-center gap-2 ${hashVerified ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-red-50 border-red-300 text-red-900'}`}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      {hashVerified
+                        ? 'MATCH VERIFIED — SHA-256 hash is 100% reproducible over sorted canonical JSON, verifier, and timestamp.'
+                        : 'HASH MISMATCH — Data has been modified.'}
+                    </span>
+                  </div>
+                )}
+
+                <p className="text-2xs text-warmink-mute leading-relaxed pt-1">
                   Deterministic cryptographic fingerprint. Any alteration to the loan fields
                   produces a different hash.
                 </p>

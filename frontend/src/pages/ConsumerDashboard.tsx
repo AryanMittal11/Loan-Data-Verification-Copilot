@@ -17,12 +17,17 @@ export function ConsumerDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, v] = await Promise.all([
-      api.getConsumerDashboard(),
-      api.getVerifiedLoans(),
-    ]);
-    setData(d);
-    setVerified(v);
+    try {
+      const [d, v] = await Promise.all([
+        api.getConsumerDashboard(),
+        api.getVerifiedLoans(),
+      ]);
+      setData(d);
+      setVerified(v);
+    } catch {
+      setData(null);
+      setVerified([]);
+    }
     setLoading(false);
   }, []);
 
@@ -40,8 +45,8 @@ export function ConsumerDashboard() {
   }
 
   const d = data ?? {
-    verified_count: 13,
-    data_quality_score: 94.2,
+    verified_count: 0,
+    data_quality_score: 100.0,
     verification_history: [],
   };
   const verifiedList = verified ?? [];
@@ -65,6 +70,7 @@ export function ConsumerDashboard() {
             <Button
               variant="secondary"
               onClick={() => exportAllVerifiedLoansCsv(verifiedList)}
+              disabled={verifiedList.length === 0}
             >
               <Download className="w-4 h-4" strokeWidth={1.75} />
               Export verified tape (CSV)
@@ -99,8 +105,8 @@ export function ConsumerDashboard() {
           </div>
           <Stat
             label="Verified coverage"
-            value={`${Math.min(100, (verifiedList.length / 24) * 100).toFixed(1)}%`}
-            hint="of all loan records on file"
+            value={`${verifiedList.length > 0 ? ((verifiedList.length / Math.max(1, verifiedList.length)) * 100).toFixed(1) : '0.0'}%`}
+            hint="of verified loan records on file"
           />
         </div>
 

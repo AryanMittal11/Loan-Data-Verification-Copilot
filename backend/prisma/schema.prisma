@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  operator
+  reviewer
+  consumer
+}
+
+enum SourceFileType {
+  loan_tape
+  servicer_update
+  document_manifest
+}
+
+enum SourceFileStatus {
+  uploading
+  imported
+  validated
+  failed
+}
+
+enum RuleStatus {
+  draft
+  approved
+  rejected
+}
+
+enum ExceptionSeverity {
+  low
+  medium
+  high
+}
+
+enum ExceptionStatus {
+  open
+  in_review
+  corrected
+  rejected
+  resolved
+  approved
+  correction_requested
+}
+
+enum AIRecommendationStatus {
+  pending
+  accepted
+  rejected
+  edited
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  role         Role
+  passwordHash String
+  organization String?
+  createdAt    DateTime @default(now())
+
+  @@map("users")
+}
+
+model SourceFile {
+  id         String           @id @default(uuid())
+  filename   String
+  type       SourceFileType   @default(loan_tape)
+  uploadedBy String
+  uploadedAt DateTime         @default(now())
+  rowCount   Int              @default(0)
+  status     SourceFileStatus @default(uploading)
+
+  rawRecords LoanRecordRaw[]
+
+  @@map("source_files")
+}
+
+model LoanRecordRaw {
+  id           String     @id @default(uuid())
+  sourceFileId String
+  rowNumber    Int
+  loanId       String?
+  rawPayload   Json
+  importedAt   DateTime   @default(now())
+  sourceFile   SourceFile @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
+
+  @@index([sourceFileId])
+  @@index([loanId])
+  @@map("loan_records_raw")
+}
+
+model LoanRecord {
+  id                String   @id @default(uuid())
+  loanId            String   @unique
+  borrowerId        String
+  loanType          String
+  originationDate   String
+  maturityDate      String
+  originalPrincipal Float
+  currentBalance    Float
+  interestRate      Float
+  termMonths        Int
+  borrowerState     String
+  paymentStatus     String
+  daysPastDue       Int
+  servicerName      String
+  documentStatus    String
+  sourceSystem      String
+  status            String   @default("canonical")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  exceptions Exception[]
+
+  @@index([loanId])
+  @@index([borrowerId])
+  @@map("loan_records")
+}
+
+model ValidationRule {
+  id         String     @id @default(uuid())
+  code       String     @unique
+  name       String
+  category   String
+  severity   String     @default("medium")
+  enabled    Boolean    @default(true)
+  config     Json
+  version    Int        @default(1)
+  createdBy  String     @default("system")
+  status     RuleStatus @default(approved)
+  approvedBy String?
+  approvedAt DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  exceptions Exception[]
+
+  @@index([code])
+  @@index([enabled])
+  @@map("validation_rules")
+}
+
+model Exception {
+  id           String            @id @default(uuid())
+  loanId       String
+  ruleId       String?
+  ruleType     String
+  severity     ExceptionSeverity @default(medium)
+  status       ExceptionStatus   @default(open)
+  sourceFileId String?
+  field        String?
+  detail       String
+  detectedAt   DateTime          @default(now())
+
+  loan            LoanRecord?        @relation(fields: [loanId], references: [loanId], onDelete: Cascade)
+  rule            ValidationRule?    @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  reviewActions   ReviewAction[]
+  recommendations AIRecommendation[]
+
+  @@index([loanId])
+  @@index([status])
+  @@index([severity])
+  @@map("exceptions")
+}
+
+model ReviewAction {
+  id           String    @id @default(uuid())
+  exceptionId  String
+  reviewerId   String
+  action       String
+  comment      String?
+  editedFields Json?
+  timestamp    DateTime  @default(now())
+  exception    Exception @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+
+  @@index([exceptionId])
+  @@map("review_actions")
+}
+
+model AIRecommendation {
+  id                  String                 @id @default(uuid())
+  exceptionId         String
+  prompt              String
+  model               String
+  timestamp           DateTime               @default(now())
+  suggestedCorrection String
+  explanation         String?
+  status              AIRecommendationStatus @default(pending)
+  exception           Exception              @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+
+  @@index([exceptionId])
+  @@map("ai_recommendations")
+}
+
+model VerifiedRecord {
+  id                   String   @id @default(uuid())
+  loanId               String   @unique
+  canonicalData        Json
+  sourceFileRef        String
+  validationResult     Json
+  reviewerDecision     String
+  aiRecommendationRef  String?
+  verifiedAt           DateTime @default(now())
+  verifiedBy           String
+  recordHash           String
+
+  @@index([loanId])
+  @@map("verified_records")
+}
+
+model AuditEvent {
+  id        String   @id @default(uuid())
+  eventType String
+  entityType String
+  entityId  String
+  actor     String
+  timestamp DateTime @default(now())
+  metadata  Json?
+
+  @@index([entityId])
+  @@index([timestamp])
+  @@map("audit_events")
+}

@@ -1,0 +1,104 @@
+[
+  {
+    "code": "REQUIRED_FIELDS",
+    "name": "Required Fields Presence",
+    "category": "required",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "requiredFields": ["loan_id", "borrower_id", "original_principal", "interest_rate"]
+    }
+  },
+  {
+    "code": "DATE_FORMAT_LOGIC",
+    "name": "Date Order & Format Logic",
+    "category": "date",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "requireMaturityAfterOrigination": true
+    }
+  },
+  {
+    "code": "NUMERIC_RANGE",
+    "name": "Numeric Range and Sign Constraints",
+    "category": "numeric",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "interestRate": { "min": 0.01, "max": 0.25 },
+      "allowBalanceExceedingPrincipal": false
+    }
+  },
+  {
+    "code": "ENUM_LOOKUP",
+    "name": "Enum Value Validation",
+    "category": "enum",
+    "enabled": true,
+    "severity": "medium",
+    "config": {
+      "allowedStates": ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"],
+      "allowedPaymentStatuses": ["Current", "30 DPD", "60 DPD", "90+ DPD", "Default", "Paid Off"]
+    }
+  },
+  {
+    "code": "DUPLICATE_LOAN_ID",
+    "name": "Duplicate Loan Identifier",
+    "category": "cross-record",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "disallowDuplicates": true
+    }
+  },
+  {
+    "code": "DUPLICATE_BORROWER_SIGNATURE",
+    "name": "Suspicious Duplicate Borrower Signature",
+    "category": "cross-record",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "signatureFields": ["borrower_id", "original_principal", "origination_date"]
+    }
+  },
+  {
+    "code": "CROSS_FILE_CONFLICT",
+    "name": "Loan Tape vs Servicer Conflict",
+    "category": "cross-file",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "compareFields": ["current_balance", "payment_status", "days_past_due"]
+    }
+  },
+  {
+    "code": "STALE_RECORD",
+    "name": "Record Staleness Check",
+    "category": "staleness",
+    "enabled": true,
+    "severity": "low",
+    "config": {
+      "maxAgeDays": 180
+    }
+  },
+  {
+    "code": "STATUS_CONSISTENCY",
+    "name": "Payment Status vs Days Past Due Consistency",
+    "category": "consistency",
+    "enabled": true,
+    "severity": "high",
+    "config": {
+      "requireZeroBalanceIfClosed": true
+    }
+  },
+  {
+    "code": "DOCUMENT_STATUS",
+    "name": "Document Completeness Status",
+    "category": "required/lookup",
+    "enabled": true,
+    "severity": "medium",
+    "config": {
+      "allowedDocumentStatuses": ["Complete", "Pending Review"]
+    }
+  }
+]

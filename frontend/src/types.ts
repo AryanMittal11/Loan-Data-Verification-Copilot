@@ -50,6 +50,7 @@ export type ExceptionStatus =
   | 'open'
   | 'approved'
   | 'rejected'
+  | 'corrected'
   | 'correction_requested';
 
 export type RuleType =
